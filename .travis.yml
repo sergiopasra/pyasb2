@@ -25,8 +25,7 @@ install:
   - conda update --yes conda
   - >
     conda create -n testenv --yes python=$TRAVIS_PYTHON_VERSION
-    $DEPS pip pytest setuptools Cython six>=1.7
-    pyyaml
+    $DEPS pip pytest setuptools
   - source activate testenv
   - pip install pyephem
   - if [[ $COVERAGE == true ]]; then pip install coveralls; fi
@@ -35,7 +34,6 @@ install:
 
 script:
   - py.test -s -v pyasb
-  - if [[ $COVERAGE == true ]]; then py.test pyasb --cov=pyasb; fi
-
+  - if [[ $COVERAGE == true ]]; then coverage run --source pyasb -m py.test; fi
 after_success:
   - if [[ $COVERAGE == true ]]; then coveralls; fi
