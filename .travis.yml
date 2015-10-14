@@ -4,7 +4,7 @@ sudo: false
 matrix:
   include:
     - python: "2.7"
-      env: DEPS="numpy scipy astropy=1.0 pyephem" COVERAGE=true
+      env: DEPS="numpy scipy astropy=1.0" COVERAGE=true
 
 before_install:
   - >
@@ -28,7 +28,7 @@ install:
     $DEPS pip pytest setuptools Cython six>=1.7
     pyyaml
   - source activate testenv
-  - pip install pytest-benchmark pytest-cov
+  - pip install pyephem
   - if [[ $COVERAGE == true ]]; then pip install coveralls; fi
   # Build in place so we can run tests
   - python setup.py build_ext --inplace
