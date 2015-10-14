@@ -6,33 +6,37 @@
 # http://eayd.in
 # http://github.com/eaydin/cr2fits
 
-### This script is redistributable in anyway.
-### But it includes netpbmfile.py which is NOT written by M. Emre Aydin.
-### It has its own copyright and it has been stated in the source code.
-### BUT, there's nothing to worry about usage, laws etc.
-### Enjoy.
+# This script is redistributable in anyway.
+# But it includes netpbmfile.py which is NOT written by M. Emre Aydin.
+# It has its own copyright and it has been stated in the source code.
+# BUT, there's nothing to worry about usage, laws etc.
+# Enjoy.
 
 # Changes by Miguel Nievas:
 ## Metadata in Spanish
-## Convert from local to UTC time
-## Header fit the AstMon and PyASB keywords
-## Clobber in fits save (overwrite)
-## Saturation limit
-## Extract 3 channels
+# Convert from local to UTC time
+# Header fit the AstMon and PyASB keywords
+# Clobber in fits save (overwrite)
+# Saturation limit
+# Extract 3 channels
 
 
-
-TimeZone = 'Europe/Madrid' # UTC
+TimeZone = 'Europe/Madrid'  # UTC
 
 sourceweb = "http://github.com/eaydin/cr2fits"
 version = "1.0.3"
 
-try :
+try:
     from copy import deepcopy
-    import numpy, subprocess, sys, re, datetime, math
+    import numpy
+    import subprocess
+    import sys
+    import re
+    import datetime
+    import math
     import astropy.io.fits as pyfits
     import pytz
-except :
+except:
     print("ERROR : Missing some libraries!")
     print("Check if you have the following :\n\tnumpy\n\tpyfits\n\tdcraw")
     print("For details : %s" % sourceweb)
@@ -70,7 +74,9 @@ except :
 
 __all__ = ['NetpbmFile']
 
+
 class NetpbmFile(object):
+
     """Read and write Netpbm PAM, PBM, PGM, PPM, files."""
 
     _types = {b'P1': b'BLACKANDWHITE', b'P2': b'GRAYSCALE', b'P3': b'RGB',
@@ -235,12 +241,13 @@ class NetpbmFile(object):
         """Return file header as byte string."""
         if pam or self.magicnum == b'P7':
             header = "\n".join(("P7",
-                "HEIGHT %i" % self.height,
-                "WIDTH %i" % self.width,
-                "DEPTH %i" % self.depth,
-                "MAXVAL %i" % self.maxval,
-                "\n".join("TUPLTYPE %s" % unicode(i) for i in self.tupltypes),
-                "ENDHDR\n"))
+                                "HEIGHT %i" % self.height,
+                                "WIDTH %i" % self.width,
+                                "DEPTH %i" % self.depth,
+                                "MAXVAL %i" % self.maxval,
+                                "\n".join("TUPLTYPE %s" % unicode(i)
+                                          for i in self.tupltypes),
+                                "ENDHDR\n"))
         elif self.maxval == 1:
             header = "P4 %i %i\n" % (self.width, self.height)
         elif self.depth == 1:
@@ -265,151 +272,161 @@ if sys.version_info[0] > 2:
 ### CR2FITS SOURCE CODE ###
 
 
-try :
+try:
     cr2FileName = sys.argv[1]
-except :
+except:
     print("ERROR : You probably don't know how to use it?")
     print("./cr2fits.py <cr2filename> <color-index>")
     print("The <color-index> can take 3 values:0,1,2 for R,G,B respectively.")
     print("Example :\n\t$ ./cr2fits.py myimage.cr2 1")
     print("The above example will create 2 outputs.")
     print("\tmyimage.ppm : The PPM, which you can delete.")
-    print("\tmyimage-G.fits : The FITS image in the Green channel, which is the purpose!")
+    print(
+        "\tmyimage-G.fits : The FITS image in the Green channel, which is the purpose!")
     print("For details : http://github.com/eaydin/cr2fits")
     print("Version : %s" % version)
     raise SystemExit
 
-colors = {0:"Red",1:"Green",2:"Blue"}
-pseudofilters = {0:"Johnson_R",1:"Johnson_V",2:"Johnson_B"}
+colors = {0: "Red", 1: "Green", 2: "Blue"}
+pseudofilters = {0: "Johnson_R", 1: "Johnson_V", 2: "Johnson_B"}
 
 
 def extract_channel(colorInput):
     print("Reading file %s...") % cr2FileName
     try:
         print('Converting to PPM')
-        #Converting the CR2 to PPM
-        p = subprocess.Popen(["dcraw","-6",\
-         "-g","1","1","-t","0","-m","3",\
-         "-H","3","-S","3700","-q","3",\
-         cr2FileName]).communicate()[0]
-        #p = subprocess.Popen(["dcraw","-H","5","-n","300",\
+        # Converting the CR2 to PPM
+        p = subprocess.Popen(["dcraw", "-6",
+                              "-g", "1", "1", "-t", "0", "-m", "3",
+                              "-H", "3", "-S", "3700", "-q", "3",
+                              cr2FileName]).communicate()[0]
+        # p = subprocess.Popen(["dcraw","-H","5","-n","300",\
         # "-S","3700","-g","1","1","-6","-W","-t","0",\
         # "-m","5","-q","3","-f",cr2FileName]).communicate()[0]
 
-        #Getting the EXIF of CR2 with dcraw
+        # Getting the EXIF of CR2 with dcraw
         print('Getting the EXIG')
-        p = subprocess.Popen(["dcraw","-i","-v",cr2FileName],stdout=subprocess.PIPE)
+        p = subprocess.Popen(
+            ["dcraw", "-i", "-v", cr2FileName], stdout=subprocess.PIPE)
         cr2header = p.communicate()[0]
     except:
         raise
 
     try:
-        #Catching the Timestamp
+        # Catching the Timestamp
         print('Catching the Timestamp')
-        m = re.search('(?<=Marca de fecha:).*',cr2header)
-        date1=m.group(0).split()
-        months = { 'Jan' : 1, 'Feb' : 2, 'Mar' : 3, 'Apr' : 4, 'May' : 5, 'Jun' : 6, 'Jul' : 7, 'Aug' : 8, 'Sep' : 9, 'Oct' : 10, 'Nov' : 11, 'Dec' : 12 }
-        date = datetime.datetime(\
-         int(date1[4]),months[date1[1]],int(date1[2]),\
-         int(date1[3].split(':')[0]),int(date1[3].split(':')[1]), \
-         int(date1[3].split(':')[2]))
+        m = re.search('(?<=Marca de fecha:).*', cr2header)
+        date1 = m.group(0).split()
+        months = {'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4, 'May': 5, 'Jun':
+                  6, 'Jul': 7, 'Aug': 8, 'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dec': 12}
+        date = datetime.datetime(
+            int(date1[4]), months[date1[1]], int(date1[2]),
+            int(date1[3].split(':')[0]), int(date1[3].split(':')[1]),
+            int(date1[3].split(':')[2]))
         local = pytz.timezone(TimeZone)
         local_dt = local.localize(date, is_dst=None)
         utcdate = local_dt.astimezone(pytz.utc)
-        date ='{0:%Y-%m-%d %H:%M:%S}'.format(date)
-        utcdate ='{0:%Y%m%d_%H%M%S}'.format(utcdate)
+        date = '{0:%Y-%m-%d %H:%M:%S}'.format(date)
+        utcdate = '{0:%Y%m%d_%H%M%S}'.format(utcdate)
 
-        #Catching the Shutter Speed
+        # Catching the Shutter Speed
         print('Catching the Shutter Speed')
-        m = re.search('(?<=Disparador:).*(?=seg)',cr2header)
+        m = re.search('(?<=Disparador:).*(?=seg)', cr2header)
         shutter = m.group(0).strip()
 
-        #Catching the Aperture
+        # Catching the Aperture
         print('Catching the Aperture')
-        m = re.search('(?<=Obertura: f/).*',cr2header)
+        m = re.search('(?<=Obertura: f/).*', cr2header)
         aperture = m.group(0).strip()
 
-        #Catching the ISO Speed
+        # Catching the ISO Speed
         print('Catching the ISO Speed')
-        m = re.search('(?<=Velocidad ISO:).*',cr2header)
+        m = re.search('(?<=Velocidad ISO:).*', cr2header)
         iso = m.group(0).strip()
 
-        #Catching the Focal length
+        # Catching the Focal length
         print('Catching the Focal length')
-        m = re.search('(?<=Distancia focal: ).*(?=mm)',cr2header)
+        m = re.search('(?<=Distancia focal: ).*(?=mm)', cr2header)
         focal = m.group(0).strip()
 
-        #Catching the Original Filename of the cr2
+        # Catching the Original Filename of the cr2
         print('Catching the Original Filename')
-        m = re.search('(?<=Nombre de archivo:).*',cr2header)
+        m = re.search('(?<=Nombre de archivo:).*', cr2header)
         original_file = m.group(0).strip()
         original_file = original_file.split("/")[-1]
 
-        #Catching the Camera Type
+        # Catching the Camera Type
         print('Catching the Camera type')
-        m = re.search('(?<=Cámara:).*',cr2header)
+        m = re.search('(?<=Cámara:).*', cr2header)
         camera = m.group(0).strip()
 
-    except :
-        print("ERROR : Something went wrong with dcraw. Do you even have dcraw?")
+    except:
+        print(
+            "ERROR : Something went wrong with dcraw. Do you even have dcraw?")
         raise SystemExit
 
     print("Reading the PPM output...")
-    try :
-        #Reading the PPM
-        ppm_name = cr2FileName.replace("CR2","cr2")
-        ppm_name = ppm_name.replace("NEF","cr2")
+    try:
+        # Reading the PPM
+        ppm_name = cr2FileName.replace("CR2", "cr2")
+        ppm_name = ppm_name.replace("NEF", "cr2")
         ppm_name = ppm_name.split('.cr2')[0] + '.ppm'
         im_ppm = NetpbmFile(ppm_name).asarray()
-    except :
+    except:
         raise
         print("ERROR : Something went wrong while reading the PPM file.")
         raise SystemExit
 
-    print("Extracting %s color channels... (may take a while)" % colors[colorInput])
-    try :
-        #Extracting the Green Channel Only
-        im_green = numpy.zeros((im_ppm.shape[0],im_ppm.shape[1]),dtype=numpy.uint16)
-        for row in xrange(0,im_ppm.shape[0]) :
-            for col in xrange(0,im_ppm.shape[1]) :
-                im_green[row,col] = im_ppm[row,col][colorInput]
+    print("Extracting %s color channels... (may take a while)" %
+          colors[colorInput])
+    try:
+        # Extracting the Green Channel Only
+        im_green = numpy.zeros(
+            (im_ppm.shape[0], im_ppm.shape[1]), dtype=numpy.uint16)
+        for row in xrange(0, im_ppm.shape[0]):
+            for col in xrange(0, im_ppm.shape[1]):
+                im_green[row, col] = im_ppm[row, col][colorInput]
         # PyASB works with left-right reversed images
         #im_green = numpy.fliplr(im_green)
-    except :
+    except:
         print("ERROR : Something went wrong while extracting color channels.")
         raise SystemExit
 
     print("Creating the FITS file...")
-    try :
-    #Creating the FITS File
+    try:
+        # Creating the FITS File
         hdu = pyfits.PrimaryHDU(im_green)
-        hdu.header.set('OBSTIME',date.encode('latin-1'))
-        hdu.header.set('DATE',utcdate.encode('latin-1'))
-        hdu.header.set('EXPTIME',shutter.encode('latin-1'))
-        hdu.header.set('EXPOSURE',shutter.encode('latin-1'))
-        hdu.header.set('APERTUR',aperture.encode('latin-1'))
-        hdu.header.set('ISO',iso.encode('latin-1'))
-        hdu.header.set('FOCAL',focal.encode('latin-1'))
-        hdu.header.set('ORIGIN',original_file.encode('latin-1'))
+        hdu.header.set('OBSTIME', date.encode('latin-1'))
+        hdu.header.set('DATE', utcdate.encode('latin-1'))
+        hdu.header.set('EXPTIME', shutter.encode('latin-1'))
+        hdu.header.set('EXPOSURE', shutter.encode('latin-1'))
+        hdu.header.set('APERTUR', aperture.encode('latin-1'))
+        hdu.header.set('ISO', iso.encode('latin-1'))
+        hdu.header.set('FOCAL', focal.encode('latin-1'))
+        hdu.header.set('ORIGIN', original_file.encode('latin-1'))
         #hdu.header.set('ORIGIN','Canon CR2 file')
-        #hdu.header.set('FILTER',colors[colorInput])
-        hdu.header.set('FILTER',pseudofilters[colorInput].encode('latin-1'))
-        hdu.header.set('CAMERA',camera.encode('latin-1'))
-        hdu.header.add_comment('FITS File Created with cr2fits.py available at %s'% (sourceweb.encode('latin-1')))
-        hdu.header.add_comment('cr2fits.py version %s'%(version.encode('latin-1')))
+        # hdu.header.set('FILTER',colors[colorInput])
+        hdu.header.set('FILTER', pseudofilters[colorInput].encode('latin-1'))
+        hdu.header.set('CAMERA', camera.encode('latin-1'))
+        hdu.header.add_comment('FITS File Created with cr2fits.py available at %s' % (
+            sourceweb.encode('latin-1')))
+        hdu.header.add_comment(
+            'cr2fits.py version %s' % (version.encode('latin-1')))
         hdu.header.add_comment('EXPTIME is in seconds.')
         hdu.header.add_comment('APERTUR is the ratio as in f/APERTUR')
         hdu.header.add_comment('FOCAL is in mm')
-    except :
+    except:
         print("ERROR : Something went wrong while creating the FITS file.")
         raise SystemExit
 
     print("Writing the FITS file...")
-    try :
-        hdu.writeto(ppm_name.replace(" ","_").split('.ppm')[0]+"-"+colors[colorInput][0]+'.fits',clobber=True)
-    except :
+    try:
+        hdu.writeto(ppm_name.replace(" ", "_").split(
+            '.ppm')[0] + "-" + colors[colorInput][0] + '.fits', clobber=True)
+    except:
         raise
-        print("ERROR : Something went wrong while writing the FITS file. Maybe it already exists?")
+        print(
+            "ERROR : Something went wrong while writing the FITS file. Maybe it already exists?")
         raise SystemExit
 
 print("Conversion successful!")

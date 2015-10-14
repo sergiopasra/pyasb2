@@ -17,6 +17,7 @@ import ephem
 
 # Setup Pyephem Observatory
 
+
 def pyephem_setup_common(image_info):
     obs_pyephem = ephem.Observer()
     obs_pyephem.pressure = 0  # Dont consider atmospheric effects
@@ -41,6 +42,7 @@ def pyephem_setup_real(image_info):
 
 # Standalone functions.
 # To be used on single points
+
 
 def horiz2xy_old(azimuth, altitude, image_info):
     '''
@@ -246,6 +248,7 @@ def calculate_airmass(altitude):
 # Vectorial functions.
 # Generate a class that contains a map of coordinates
 # that match the Image pixels
+
 
 class ImageCoordinates(object):
 
