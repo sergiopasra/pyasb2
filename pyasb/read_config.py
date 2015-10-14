@@ -1,6 +1,6 @@
-#!/usr/bin/env python
 
-'''
+
+"""
 PyASB launcher module
 
 Concatenate processes
@@ -9,7 +9,7 @@ ____________________________
 This module is part of the PyASB project, 
 created and maintained by Miguel Nievas [UCM].
 ____________________________
-'''
+"""
 
 DEBUG = False;
 
@@ -24,13 +24,8 @@ __maintainer__ = "Miguel Nievas"
 __email__ = "miguelnr89[at]gmail[dot]com"
 __status__ = "Prototype" # "Prototype", "Development", or "Production"
 
-try:
-    import sys,os,inspect
-except:
-    print(str(inspect.stack()[0][2:4][::-1])+': One or more modules missing')
-    raise SystemExit
 
-class ConfigOptions():
+class ConfigOptions(object):
     def __init__(self,config_file):
         self.FileOptions = []
         self.read_config_file(config_file)

@@ -1,6 +1,6 @@
-#!/usr/bin/env python
 
-'''
+
+"""
 Load FITS Info data
 
 This module processes the Image metadata and the program main options
@@ -9,7 +9,7 @@ ____________________________
 This module is part of the PyASB project, 
 created and maintained by Miguel Nievas [UCM].
 ____________________________
-'''
+"""
 
 __author__ = "Miguel Nievas"
 __copyright__ = "Copyright 2012, PyASB project"
@@ -22,16 +22,13 @@ __maintainer__ = "Miguel Nievas"
 __email__ = "miguelnr89[at]gmail[dot]com"
 __status__ = "Prototype" # "Prototype", "Development", or "Production"
 
-try:
-    import sys,os,inspect
-    import numpy as np
-    import astropy.io.fits as pyfits
-    from read_config import *
-    from load_fitsimage import ImageTest
-    from astrometry import pyephem_setup_real, pyephem_setup_common
-except:
-    print(str(inspect.stack()[0][2:4][::-1])+': One or more modules missing')
-    raise SystemExit
+
+
+import numpy as np
+
+from load_fitsimage import ImageTest
+from astrometry import pyephem_setup_real
+
 
 
 class ImageInfo(ImageTest):

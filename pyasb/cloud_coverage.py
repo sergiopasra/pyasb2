@@ -1,6 +1,6 @@
-#!/usr/bin/env python
 
-'''
+
+"""
 Cloud covering module
 
 Determine if clouds are present in the image.
@@ -9,7 +9,7 @@ ____________________________
 This module is part of the PyASB project, 
 created and maintained by Miguel Nievas [UCM].
 ____________________________
-'''
+"""
 
 DEBUG = False
 
@@ -24,23 +24,20 @@ __maintainer__ = "Miguel Nievas"
 __email__ = "miguelnr89[at]gmail[dot]com"
 __status__ = "Prototype" # "Prototype", "Development", or "Production"
 
-try:
-    import sys,os,inspect
-    import copy
-    import numpy as np
-    import scipy.interpolate as sint
-    import matplotlib as mpl
-    import matplotlib.pyplot as plt
-    import matplotlib.colors as mpc
-    import matplotlib.cm as mpcm
-    import matplotlib.patches as mpp
-    from star_calibration import StarCatalog
-except:
-    print(str(inspect.stack()[0][2:4][::-1])+': One or more modules missing')
-    raise SystemExit
+
+import sys, inspect
+import copy
+
+import numpy as np
+import scipy.interpolate as sint
+import matplotlib.pyplot as plt
+import matplotlib.colors as mpc
+
+from star_calibration import StarCatalog
 
 
-class CloudCoverage():
+
+class CloudCoverage(object):
     ''' This is a completely optional module.
         If user doesn't want neither the map nor the table, 
         just don't do anything'''

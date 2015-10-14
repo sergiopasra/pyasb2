@@ -1,6 +1,5 @@
-#!/usr/bin/env python
 
-'''
+"""
 Load FITS image and header
 
 This module loads the AllSky FITS image and returns both
@@ -10,7 +9,7 @@ ____________________________
 This module is part of the PyASB project,
 created and maintained by Miguel Nievas [UCM].
 ____________________________
-'''
+"""
 
 __author__ = "Miguel Nievas"
 __copyright__ = "Copyright 2012, PyASB project"
@@ -23,17 +22,14 @@ __maintainer__ = "Miguel Nievas"
 __email__ = "miguelnr89[at]gmail[dot]com"
 __status__ = "Prototype" # "Prototype", "Development", or "Production"
 
-try:
-    import sys,os,inspect
-    import numpy as np
-    import astropy.io.fits as pyfits
-    from astrometry import ImageCoordinates
-    from read_config import *
-except:
-    print(str(inspect.stack()[0][2:4][::-1])+': One or more modules missing')
-    raise SystemExit
 
-class ImageTest():
+import os, inspect
+import numpy as np
+import astropy.io.fits as pyfits
+from astrometry import ImageCoordinates
+
+
+class ImageTest(object):
     '''Perform some test on the image header and extract information'''
 
     @staticmethod

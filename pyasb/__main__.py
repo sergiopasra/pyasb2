@@ -1,6 +1,6 @@
-#!/usr/bin/env python2
 
-'''
+
+"""
 PyASB launcher module
 
 Concatenate processes
@@ -9,7 +9,7 @@ ____________________________
 This module is part of the PyASB project, 
 created and maintained by Miguel Nievas [UCM].
 ____________________________
-'''
+"""
 
 __author__ = "Miguel Nievas"
 __copyright__ = "Copyright 2012, PyASB project"
@@ -23,28 +23,21 @@ __email__ = "miguelnr89[at]gmail[dot]com"
 __status__ = "Prototype" # "Prototype", "Development", or "Production"
 
 
-try:
-    #import gc
-    import sys,os,inspect
-    import signal
-    import time
-    
-    from input_options import *
-    from image_info import *
-    from help import *
-    from astrometry import *
-    from star_calibration import *
-    from load_fitsimage import *
-    from bouguer_fit import *
-    from sky_brightness import *
-    from skymap_plot import *
-    from cloud_coverage import *
-    from write_summary import *
-except:
-    #raise
-    print(str(inspect.stack()[0][2:4][::-1])+\
-     ': One or more modules missing')
-    raise# SystemExit
+
+
+import signal
+
+from input_options import *
+from image_info import *
+from help import *
+
+from load_fitsimage import *
+from bouguer_fit import *
+from sky_brightness import *
+from skymap_plot import *
+from cloud_coverage import *
+from write_summary import *
+
 
 config_file_default  = 'config.cfg'
 
@@ -116,7 +109,7 @@ class LoadImage(object):
                     setattr(self.ImageInfo,path,False)
         
 #@profile
-class ImageAnalysis():
+class ImageAnalysis(object):
     def __init__(self,Image):
         ''' Analize image and perform star astrometry & photometry. 
             Returns ImageInfo and StarCatalog'''
@@ -153,7 +146,7 @@ class MultipleImageAnalysis():
 '''
 
 #@profile
-class InstrumentCalibration():
+class InstrumentCalibration(object):
     def __init__(self,ImageInfo,StarCatalog):
         try:
             self.BouguerFit = BouguerFit(ImageInfo,StarCatalog)
@@ -167,7 +160,7 @@ class InstrumentCalibration():
         
 
 #@profile
-class MeasureSkyBrightness():
+class MeasureSkyBrightness(object):
     def __init__(self,FitsImage,ImageInfo,BouguerFit):
         ImageCoordinates_ = ImageCoordinates(ImageInfo)
         TheSkyBrightness = SkyBrightness(\

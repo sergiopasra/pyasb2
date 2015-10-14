@@ -1,6 +1,6 @@
-#!/usr/bin/env python
 
-'''
+
+"""
 PyASB input options module
 
 Read input options
@@ -9,7 +9,7 @@ ____________________________
 This module is part of the PyASB project, 
 created and maintained by Miguel Nievas [UCM].
 ____________________________
-'''
+"""
 
 __author__ = "Miguel Nievas"
 __copyright__ = "Copyright 2012, PyASB project"
@@ -22,13 +22,13 @@ __maintainer__ = "Miguel Nievas"
 __email__ = "miguelnr89[at]gmail[dot]com"
 __status__ = "Prototype" # "Prototype", "Development", or "Production"
 
-try:
-    import sys,os,inspect
-except:
-    print(str(inspect.stack()[0][2:4][::-1]+': One or more modules missing'))
-    raise SystemExit
 
-class ReadOptions():
+import os
+import inspect
+import datetime
+
+
+class ReadOptions(object):
     def __init__(self,input_options):
         # Lambda: http://docs.python.org/release/2.5.2/tut/node6.html [4.7.5]
         self.options = { '-h': lambda: 'show_help', '-d': lambda: 'use_date', '-i': lambda: 'use_file', 

@@ -1,6 +1,6 @@
-#!/usr/bin/env python
 
-'''
+
+"""
 PyASB astrometry functions.
 
 Convert from one coordinate system to another.
@@ -9,17 +9,12 @@ ____________________________
 This module is part of the PyASB project, 
 created and maintained by Miguel Nievas [UCM].
 ____________________________
-'''
+"""
 
-try:
-    import sys,os,inspect
-    import numpy as np
-    import math
-    #from numpy.math import pi,sin,cos,sqrt,atan2,asin
-    import ephem
-except:
-    print(str(inspect.stack()[0][2:4][::-1])+': One or more modules missing')
-    raise SystemExit
+import numpy as np
+
+import ephem
+
 
 __author__ = "Miguel Nievas"
 __copyright__ = "Copyright 2012, PyASB project"
@@ -241,7 +236,7 @@ Generate a class that contains a map of coordinates
 that match the Image pixels
 '''
 
-class ImageCoordinates():
+class ImageCoordinates(object):
     def __init__(self,ImageInfo):
         self.calculate_altaz(ImageInfo)
     

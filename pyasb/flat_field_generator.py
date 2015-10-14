@@ -1,6 +1,6 @@
-#!/usr/bin/env python
 
-'''
+
+"""
 Synthetic FlatField generator
 
 Create AllSky FlatFields from:
@@ -13,7 +13,7 @@ ____________________________
 This module is part of the PyASB project, 
 created and maintained by Miguel Nievas [UCM].
 ____________________________
-'''
+"""
 
 DEBUG = False
 
@@ -28,23 +28,19 @@ __maintainer__ = "Miguel Nievas"
 __email__ = "miguelnr89[at]gmail[dot]com"
 __status__ = "Prototype" # "Prototype", "Development", or "Production"
 
-try:
-    import sys,os,inspect
-    import signal
-    import numpy as np
-    import scipy
-    import scipy.interpolate
-    import scipy.ndimage
-    import astropy.io.fits as pyfits
-    import re
-    # Aux functions from PyASB
-    from fits_operator import *
-    from read_config import *
-    from image_info import *
-    from astrometry import *
-except:
-    print(str(inspect.stack()[0][2:4][::-1])+': One or more modules missing')
-    raise SystemExit
+
+import re
+
+import scipy
+import scipy.interpolate
+import scipy.ndimage
+
+# Aux functions from PyASB
+from fits_operator import *
+from read_config import *
+from image_info import *
+from astrometry import *
+
 
 '''
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -89,7 +85,7 @@ def verbose(function, *args):
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 '''
 
-class PlatformHelp():
+class PlatformHelp(object):
     def __init__(self):
         self.make_title()
         self.make_welcome()
@@ -163,7 +159,7 @@ def get_config_filename(InputOptions):
 
 
 
-class ReadOptions():
+class ReadOptions(object):
     def __init__(self,input_options):
         '''
         Read user input.
@@ -428,7 +424,7 @@ def create_synthetic_image(radialprofile,ImageInfo):
     map_response[np.isnan(map_response)] = 1
     return(map_response)
 
-class FlatField():
+class FlatField(object):
     '''
     Synthetic FlatField generator
     '''

@@ -1,6 +1,5 @@
-#!/usr/bin/env python
 
-'''
+"""
 SkyMap module
 
 Auxiliary functions to plot the SkyMap
@@ -9,7 +8,9 @@ ____________________________
 This module is part of the PyASB project, 
 created and maintained by Miguel Nievas [UCM].
 ____________________________
-'''
+"""
+
+from __future__ import print_function
 
 __author__ = "Miguel Nievas"
 __copyright__ = "Copyright 2012, PyASB project"
@@ -22,12 +23,6 @@ __maintainer__ = "Miguel Nievas"
 __email__ = "miguelnr89[at]gmail[dot]com"
 __status__ = "Prototype" # "Prototype", "Development", or "Production"
 
-try:
-    import sys,os,inspect
-except:
-    print(str(inspect.stack()[0][2:4][::-1])+': One or more modules missing')
-    raise
-
 
 
 # NOTE: The following 2 functions should be moved to separate file or at least to a new class
@@ -35,14 +30,15 @@ except:
 # 1.) Create the file with the header
 # 2.) Iterative add lines
 
-class Summary():
-    def __init__(self,Image,InputOptions,ImageAnalysis,InstrumentCalibration,ImageSkyBrightness,CloudCoverage):
+class Summary(object):
+    def __init__(self,Image,InputOptions,ImageAnalysis,InstrumentCalibration,
+                 ImageSkyBrightness,CloudCoverage):
         self.summarize_results(InputOptions, Image, ImageAnalysis,\
             InstrumentCalibration, ImageSkyBrightness, CloudCoverage)
         self.save_summary_to_file(Image.ImageInfo)
 
-    def summarize_results(self,InputOptions, Image, ImageAnalysis,\
-    InstrumentCalibration, ImageSkyBrightness, CloudCoverage):
+    def summarize_results(self,InputOptions, Image, ImageAnalysis,
+                          InstrumentCalibration, ImageSkyBrightness, CloudCoverage):
 
         sum_date   = str(Image.ImageInfo.fits_date)
         sum_filter = str(Image.ImageInfo.used_filter)
@@ -69,7 +65,6 @@ class Summary():
         try:
             assert(ImageInfo.summary_path!=False)
         except:
-            #print(inspect.stack()[0][2:4][::-1])
             print('Skipping write summary to file')
         else:
             print('Write summary to file')

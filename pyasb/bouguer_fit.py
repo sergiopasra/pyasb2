@@ -1,6 +1,6 @@
-#!/usr/bin/env python
 
-'''
+
+"""
 Bouguer fitting module
 
 Fit fluxes and star data to an extinction law to obtain
@@ -10,7 +10,7 @@ ____________________________
 This module is part of the PyASB project,
 created and maintained by Miguel Nievas [UCM].
 ____________________________
-'''
+"""
 
 DEBUG=False
 
@@ -26,20 +26,18 @@ __email__ = "miguelnr89[at]gmail[dot]com"
 __status__ = "Prototype" # "Prototype", "Development", or "Production"
 
 
-try:
-    import sys,os,inspect
-    import matplotlib.pyplot as plt
-    import matplotlib.colors as mpc
-    import matplotlib.patches as mpp
-    import scipy.stats as stats
-    import math
-    import numpy as np
-    import astrometry
-except:
-    print(str(inspect.stack()[0][2:4][::-1])+': One or more modules missing')
-    raise SystemExit
 
-class BouguerFit():
+import inspect
+import math
+
+import matplotlib.pyplot as plt
+import scipy.stats as stats
+import numpy as np
+
+import astrometry
+
+
+class BouguerFit(object):
     def __init__(self,ImageInfo,PhotometricCatalog):
         print('Calculating Instrument zeropoint and extinction ...')
         self.can_continue = False
@@ -178,7 +176,7 @@ class BouguerFit():
         #plt.clf()
         #plt.close('all')
 
-class TheilSenRegression():
+class TheilSenRegression(object):
     # Robust Theil Sen estimator, instead of the classic least-squares.
     def __init__(self,Xpoints,Ypoints,ImageInfo,y0=None,y0err=None,x0=None,x0err=None):
         assert(len(Xpoints)==len(Ypoints) and len(Ypoints)>2)

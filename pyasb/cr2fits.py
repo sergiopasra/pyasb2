@@ -30,7 +30,7 @@ version = "1.0.3"
 try :
     from copy import deepcopy
     import numpy, subprocess, sys, re, datetime, math
-        import astropy.io.fits as pyfits
+    import astropy.io.fits as pyfits
     import pytz
 except :
     print("ERROR : Missing some libraries!")

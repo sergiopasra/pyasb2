@@ -1,6 +1,6 @@
-#!/usr/bin/env python
 
-'''
+
+"""
 PyASB FTP module.
 
 Get images iteratively from FTP server.
@@ -9,7 +9,7 @@ ____________________________
 This module is part of the PyASB project, 
 created and maintained by Miguel Nievas [UCM].
 ____________________________
-'''
+"""
 
 
 __author__ = "Miguel Nievas"
@@ -24,18 +24,16 @@ __email__ = "miguelnr89[at]gmail[dot]com"
 __status__ = "Prototype" # "Prototype", "Development", or "Production"
 
 
-try:
-    import sys,os,inspect
-    import datetime
-    import time
-    import signal
-    import urllib
-    import gzip
-    import ftputil
-    import pyfits
-except:
-    print(str(inspect.stack()[0][2:4][::-1])+': One or more modules missing')
-    raise SystemExit
+
+import sys,os,inspect
+import datetime
+import time
+import signal
+import urllib
+
+import ftputil
+
+
 
 
 ''' User defined options '''
@@ -71,7 +69,7 @@ signal.signal(signal.SIGTERM, handler)
 signal.signal(signal.SIGINT, handler)
 
 
-class FtpSession():
+class FtpSession(object):
     def __init__(self,ftp_server,ftp_user,ftp_pass,ftp_basedir,analysis_basedir):
         self.ftp_server  = ftp_server
         self.ftp_user    = ftp_user

@@ -1,6 +1,6 @@
-#!/usr/bin/env python
 
-'''
+
+"""
 Load Catalog file and make PyASB StarCatalog
 
 This module loads the catalog file and returns 
@@ -12,7 +12,7 @@ ____________________________
 This module is part of the PyASB project, 
 created and maintained by Miguel Nievas [UCM].
 ____________________________
-'''
+"""
 
 DEBUG = False
 
@@ -27,15 +27,10 @@ __maintainer__ = "Miguel Nievas"
 __email__ = "miguelnr89[at]gmail[dot]com"
 __status__ = "Prototype" # "Prototype", "Development", or "Production"
 
-try:
-    import sys,os,inspect
-    import ephem
-    import scipy.stats
-    from astrometry import *
-    from skymap_plot import *
-except:
-    print(str(inspect.stack()[0][2:4][::-1])+': One or more modules missing')
-    raise SystemExit
+
+
+import scipy.stats
+from skymap_plot import *
 
 
 def verbose(function, *args):
@@ -53,7 +48,7 @@ def verbose(function, *args):
     else:
         return(out)
 
-class Star():
+class Star(object):
     def __init__(self,StarCatalogLine,ImageInfo):
         ''' Takes StarCatalogLine (line from catalog file) and 
               FitsImage, ImageInfo and ObsPyephem objects

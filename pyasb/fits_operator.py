@@ -1,6 +1,6 @@
-#!/usr/bin/env python
 
-'''
+
+"""
 FITS operations
 
 Calculate the sum, difference, multiply or divide fits images.
@@ -10,7 +10,7 @@ ____________________________
 This module is part of the PyASB project, 
 created and maintained by Miguel Nievas [UCM].
 ____________________________
-'''
+"""
 
 DEBUG = False
 
@@ -25,15 +25,13 @@ __maintainer__ = "Miguel Nievas"
 __email__ = "miguelnr89[at]gmail[dot]com"
 __status__ = "Prototype" # "Prototype", "Development", or "Production"
 
-try:
-    import sys,os,inspect
-    import signal
-    import numpy as np
-    import astropy.io.fits as pyfits
-    import datetime
-except:
-    print(str(inspect.stack()[0][2:4][::-1])+': One or more modules missing')
-    raise SystemExit
+
+import sys, inspect
+import signal
+import numpy as np
+import astropy.io.fits as pyfits
+import datetime
+
     
 
 '''
@@ -91,7 +89,7 @@ def load_image(image):
         print('OK')
         return(Image_Data,Image_Header) 
 
-class FitsOperation():
+class FitsOperation(object):
     def __init__(self,fits1,fits2):
         self.loadfits(fits1,fits2)
     

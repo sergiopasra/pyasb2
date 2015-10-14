@@ -1,6 +1,6 @@
-#!/usr/bin/env python
 
-'''
+
+"""
 Sky Brightness photometry module
 
 Measure Sky brightness from the image using previous
@@ -11,7 +11,7 @@ ____________________________
 This module is part of the PyASB project,
 created and maintained by Miguel Nievas [UCM].
 ____________________________
-'''
+"""
 
 __author__ = "Miguel Nievas"
 __copyright__ = "Copyright 2012, PyASB project"
@@ -24,21 +24,13 @@ __maintainer__ = "Miguel Nievas"
 __email__ = "miguelnr89[at]gmail[dot]com"
 __status__ = "Prototype" # "Prototype", "Development", or "Production"
 
-
-try:
-    import sys,os,inspect
-    import numpy as np
-    import scipy.interpolate as sint
-    import matplotlib as mpl
-    import matplotlib.pyplot as plt
-    import matplotlib.colors as mpc
-    import matplotlib.patches as mpp
-except:
-    print(str(inspect.stack()[0][2:4][::-1])+': One or more modules missing')
-    raise SystemExit
+import inspect
+import numpy as np
+import scipy.interpolate as sint
+import matplotlib.pyplot as plt
 
 
-class SkyBrightness():
+class SkyBrightness(object):
     '''
     Class with Sky Brightness measure methods.
     Init requires FitsImage, ImageCoordinates, ImageInfo and Bouguerfit objects.
@@ -179,7 +171,7 @@ class SkyBrightness():
                 self.sky_brightness_region(BouguerFit,ImageInfo,fits_zenith_region_values,limits)
 
 
-class SkyBrightnessGraph():
+class SkyBrightnessGraph(object):
     def __init__(self,SkyBrightness,ImageInfo,BouguerFit):
         if ImageInfo.skybrightness_map_path==False:
             # Don't draw anything

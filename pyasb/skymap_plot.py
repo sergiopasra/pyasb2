@@ -1,6 +1,6 @@
-#!/usr/bin/env python
 
-'''
+
+"""
 SkyMap module
 
 Auxiliary functions to plot the SkyMap
@@ -9,7 +9,7 @@ ____________________________
 This module is part of the PyASB project, 
 created and maintained by Miguel Nievas [UCM].
 ____________________________
-'''
+"""
 
 __author__ = "Miguel Nievas"
 __copyright__ = "Copyright 2012, PyASB project"
@@ -23,21 +23,13 @@ __email__ = "miguelnr89[at]gmail[dot]com"
 __status__ = "Prototype" # "Prototype", "Development", or "Production"
 
 
-try:
-    import sys,os,inspect
-    from astrometry import *
-    #from scipy.ndimage import uniform_filter as denoise
-    import numpy as np
-    import math
-    import matplotlib.pyplot as plt
-    import matplotlib.colors as mpc
-    import matplotlib.patches as mpp
-    import matplotlib as mpl
-except:
-    print(str(inspect.stack()[0][2:4][::-1])+': One or more modules missing')
-    raise SystemExit
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpp
+import matplotlib as mpl
 
-class SkyMap():
+from astrometry import *
+
+class SkyMap(object):
     ''' SkyMap class '''
     
     def __init__(self,ImageInfo,FitsImage):
