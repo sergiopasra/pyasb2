@@ -21,7 +21,7 @@ import scipy.interpolate as sint
 import matplotlib.pyplot as plt
 import matplotlib.colors as mpc
 
-from star_calibration import StarCatalog
+from .star_calibration import StarCatalog
 
 # This is a completely optional module.
 # If user doesn't want neither the map nor the table,

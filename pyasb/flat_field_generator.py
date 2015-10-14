@@ -15,24 +15,24 @@ DEBUG = False
 
 import os
 import re
+import sys
+import signal
+import inspect
 
+import numpy as np
 import scipy
 import scipy.interpolate
 import scipy.ndimage
+import astropy.io.fits as pyfits
 
-from fits_operator import *
-from read_config import *
-from image_info import *
-from astrometry import *
+from .fits_operator import load_image
+from .read_config import ConfigOptions
+from .image_info import ImageInfo
+from .astrometry import ImageCoordinates
 from .info import __version__, __shortname__, __longname__
 
-'''
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-~~~~~~~~~~ Halt handler ~~~~~~~~~~~
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-'''
 
-
+# ~~~~~~~~~~ Halt handler ~~~~~~~~~~~
 def handler(signum, frame):
     print 'Signal handler called with signal', signum
     print "CTRL-C pressed"

@@ -16,8 +16,12 @@ DEBUG = False
 
 import inspect
 
+import ephem
+import numpy as np
 import scipy.stats
-from skymap_plot import *
+
+from .astrometry import horiz2xy, pyephem_setup_real, eq2horiz
+from .astrometry import calculate_airmass, atmospheric_refraction
 
 
 def verbose(function, *args):

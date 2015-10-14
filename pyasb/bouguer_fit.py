@@ -21,7 +21,7 @@ import matplotlib.pyplot as plt
 import scipy.stats as stats
 import numpy as np
 
-import astrometry
+import pyasb.astrometry
 
 
 class BouguerFit(object):
@@ -128,7 +128,7 @@ class BouguerFit(object):
         ''' Plot photometric data from the bouguer fit '''
 
         xfit = np.linspace(
-            1, astrometry.calculate_airmass(ImageInfo.min_altitude), 10)
+            1, pyasb.astrometry.calculate_airmass(ImageInfo.min_altitude), 10)
         yfit = np.polyval(
             [self.Regression.mean_slope, self.Regression.mean_zeropoint], xfit)
 

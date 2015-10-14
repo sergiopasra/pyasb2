@@ -9,7 +9,7 @@
 # ____________________________
 
 
-''' User defined options '''
+"""User defined options"""
 
 import sys
 import os
@@ -37,13 +37,7 @@ ftp_images_since_reconnect = 0
 ftp_max_images_until_reconnect = 20
 
 
-'''
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-~~~~~~~~~~ Halt handler ~~~~~~~~~~~
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-'''
-
-
+# ~~~~~~~~~~ Halt handler ~~~~~~~~~~~
 def handler(signum, frame):
     print 'Signal handler called with signal', signum
     print "CTRL-C pressed"

@@ -11,11 +11,12 @@
 
 import math
 
+import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpp
 import matplotlib as mpl
 
-from astrometry import *
+from .astrometry import horiz2xy, zenith_position
 
 
 class SkyMap(object):

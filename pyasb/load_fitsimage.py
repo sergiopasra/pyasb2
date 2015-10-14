@@ -14,7 +14,7 @@ import os
 import inspect
 import numpy as np
 import astropy.io.fits as pyfits
-from astrometry import ImageCoordinates
+from .astrometry import ImageCoordinates
 
 
 class ImageTest(object):

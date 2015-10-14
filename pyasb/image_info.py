@@ -22,15 +22,6 @@ class ImageInfo(ImageTest):
     and put it in a class ImageInfo
     '''
 
-    def __init__(self):
-        pass
-
-    '''
-    def __init__(self,fits_header,ConfigOptions):
-        self.read_header(fits_header)
-        self.config_processing(ConfigOptions)
-    '''
-
     def read_header(self, fits_header):
         # Date and time in different formats
         self.fits_date = ImageTest.correct_date(fits_header)

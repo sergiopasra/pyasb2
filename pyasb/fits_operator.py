@@ -20,13 +20,7 @@ import astropy.io.fits as pyfits
 import datetime
 
 
-'''
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-~~~~~~~~~~ Halt handler ~~~~~~~~~~~
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-'''
-
-
+# ~~~~~~~~~~ Halt handler ~~~~~~~~~~~
 def handler(signum, frame):
     print 'Signal handler called with signal', signum
     print "CTRL-C pressed"
@@ -34,13 +28,6 @@ def handler(signum, frame):
 
 signal.signal(signal.SIGTERM, handler)
 signal.signal(signal.SIGINT, handler)
-
-
-'''
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-~~ Exec Function in verbose mode ~~
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-'''
 
 
 def verbose(function, *args):
