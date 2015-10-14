@@ -1,52 +1,34 @@
 
-
-"""
-PyASB launcher module
-
-Concatenate processes
-____________________________
-
-This module is part of the PyASB project, 
-created and maintained by Miguel Nievas [UCM].
-____________________________
-"""
-
-__author__ = "Miguel Nievas"
-__copyright__ = "Copyright 2012, PyASB project"
-__credits__ = ["Miguel Nievas"]
-__license__ = "GNU GPL v3"
-__shortname__ = "PyASB"
-__longname__ = "Python All-Sky Brightness pipeline"
-__version__ = "1.99.0"
-__maintainer__ = "Miguel Nievas"
-__email__ = "miguelnr89[at]gmail[dot]com"
-__status__ = "Prototype"  # "Prototype", "Development", or "Production"
+# PyASB launcher module
+#
+# Concatenate processes
+# ____________________________
+#
+# This module is part of the PyASB project,
+# created and maintained by Miguel Nievas [UCM].
 
 
 import signal
+import sys
+import inspect
 
-from input_options import *
-from image_info import *
-from help import *
+from .input_options import ReadOptions
+from .image_info import ImageInfo
+from .help import PlatformHelp
 
-from load_fitsimage import *
-from bouguer_fit import *
-from sky_brightness import *
-from skymap_plot import *
-from cloud_coverage import *
-from write_summary import *
-
+from .load_fitsimage import FitsImage
+from .astrometry import ImageCoordinates
+from .bouguer_fit import BouguerFit
+from .sky_brightness import SkyBrightness, SkyBrightnessGraph
+from .skymap_plot import SkyMap
+from .cloud_coverage import CloudCoverage, StarCatalog
+from .write_summary import Summary
+from .read_config import ConfigOptions
 
 config_file_default = 'config.cfg'
 
 
-'''
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-~~~~~~~~~~ Halt handler ~~~~~~~~~~~
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-'''
-
-
+# ~~~~~~~~~~ Halt handler ~~~~~~~~~~~
 def handler(signum, frame):
     print 'Signal handler called with signal', signum
     print "CTRL-C pressed"
@@ -286,25 +268,3 @@ if __name__ == '__main__':
     for input_file in InputOptions.fits_filename_list:
         perform_complete_analysis(
             InputOptions, ImageInfoCommon, ConfigOptions_, input_file)
-
-    '''gc.collect()
-    
-    d = dict()
-    for o in gc.get_objects():
-        name = type(o).__name__
-        if name not in d:
-            d[name] = 1
-        else:
-            d[name] += 1
-
-    items = d.items()
-    items.sort(key=lambda x:x[1])
-    debug_file = open("debug_objects.txt",'w')
-    debug_file.close()
-    debug_file = open("debug_objects.txt",'a+')
-    for key, value in items:
-        print key, value
-        debug_file.write(str(key)+",\t"+str(value)+"\n")
-    
-    debug_file.close()
-    '''
