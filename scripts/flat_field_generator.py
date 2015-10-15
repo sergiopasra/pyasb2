@@ -11,12 +11,11 @@
 # This module is part of the PyASB project,
 # created and maintained by Miguel Nievas [UCM].
 
-DEBUG = False
 
 import os
 import re
 import sys
-import signal
+
 import inspect
 
 import numpy as np
@@ -32,14 +31,6 @@ from .astrometry import ImageCoordinates
 from .info import __version__, __shortname__, __longname__
 
 
-# ~~~~~~~~~~ Halt handler ~~~~~~~~~~~
-def handler(signum, frame):
-    print 'Signal handler called with signal', signum
-    print "CTRL-C pressed"
-    sys.exit(0)
-
-signal.signal(signal.SIGTERM, handler)
-signal.signal(signal.SIGINT, handler)
 
 
 '''
@@ -58,9 +49,6 @@ def verbose(function, *args):
     except:
         # Something happened while runing function
         raise
-        if DEBUG == True:
-            print(str(inspect.stack()[0][2:4][::-1]) + ' Error')
-            raise
     else:
         return(out)
 
