@@ -24,7 +24,7 @@ class ReadOptions(object):
                         '-ob': lambda: 'use_bouguerfit', '-os': lambda: 'use_sb', '-ost': lambda: 'use_sbtable'}
 
         # By default, we wont show on screen nor save on disk.
-        self.configfile = False
+        self.configfile = None
         self.show_help = False
         self.photometry_table_path = False
         self.skymap_table_path = False

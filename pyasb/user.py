@@ -2,6 +2,7 @@ import argparse
 
 from pyasb.info import __version__
 
+config_file_default = 'config.cfg'
 
 def main():
 
@@ -11,9 +12,11 @@ def main():
                                      description='Welcome to %(prog)s (Python All-Sky Brightness pipeline)'
                                      )
     parser.add_argument('--version', action='version', version=thisversion)
-    parser.add_argument('-i', metavar="input_allsky_image",
+    parser.add_argument('-i', metavar="input_allsky_image", nargs='+',
+                        dest='fits_filename_list',
                         help='All Sky image you want to be analyzed')
-    parser.add_argument('-c', metavar="config_file",
+    parser.add_argument('-c', action='store', dest='configfile', metavar="config_file",
+                        default=config_file_default,
                         help='Use alternative config file')
     parser.add_argument('-d', metavar="[year,month,day]",
                         help='Date to be analyzed (AstMon-UCM only), '
@@ -44,6 +47,7 @@ def main():
                         help='Output Sky Brightness table, full or relative path, '
                              'if no output file, show the graph on screen')
     args = parser.parse_args()
+    return args
 
 
 if __name__ == '__main__':

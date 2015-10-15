@@ -24,6 +24,7 @@ from .skymap_plot import SkyMap
 from .cloud_coverage import CloudCoverage, StarCatalog
 from .write_summary import Summary
 from .read_config import ConfigOptions
+from .user import main
 
 config_file_default = 'config.cfg'
 
@@ -42,7 +43,7 @@ signal.signal(signal.SIGINT, handler)
 #@profile
 class LoadImage(object):
 
-    def __init__(self, InputOptions, ImageInfo, ConfigOptions, input_file=None):
+    def __init__(self, InputOptions, ImageInfo, ConfigOptions, configs, input_file=None):
         # Load Image file list
         if input_file == None:
             input_file = InputOptions.fits_filename_list[0]
@@ -52,7 +53,7 @@ class LoadImage(object):
         # Local copy of ImageInfo. We will process it further.
         self.ImageInfo = ImageInfo
         self.ImageInfo.read_header(self.FitsImage.fits_Header)
-        self.ImageInfo.config_processing_specificfilter(ConfigOptions)
+        self.ImageInfo.config_processing_specificfilter(ConfigOptions, configs)
 
         try:
             self.FitsImage.subtract_corners_background = True
@@ -172,11 +173,11 @@ class MeasureSkyBrightness(object):
 #@profile
 
 
-def perform_complete_analysis(InputOptions, ImageInfoCommon, ConfigOptions, input_file):
+def perform_complete_analysis(InputOptions, ImageInfoCommon, ConfigOptions, configs, input_file):
     # Load Image into memory & reduce it.
         # Clean (no leaks)
     Image_ = LoadImage(
-        InputOptions, ImageInfoCommon, ConfigOptions, input_file)
+        InputOptions, ImageInfoCommon, ConfigOptions, configs, input_file)
 
     # Look for stars that appears in the catalog, measure their fluxes. Generate starmap.
     # Clean (no leaks)
@@ -185,7 +186,7 @@ def perform_complete_analysis(InputOptions, ImageInfoCommon, ConfigOptions, inpu
     print('Image date: ' + str(Image_.ImageInfo.date_string) +
           ', Image filter: ' + str(Image_.ImageInfo.used_filter))
 
-    'Create the needed classes for the summary write'
+    # Create the needed classes for the summary write
     class InstrumentCalibration_:
 
         class BouguerFit:
@@ -216,11 +217,11 @@ def perform_complete_analysis(InputOptions, ImageInfoCommon, ConfigOptions, inpu
             Image_.ImageInfo,
             InstrumentCalibration_.BouguerFit)
 
-    '''
-        Even if calibration fails, 
-        we will try to determine cloud coverage
-        and write the summary
-        '''
+    #
+    #    Even if calibration fails,
+    #    we will try to determine cloud coverage
+    #    and write the summary
+    #
 
     # Detect clouds on image
     ImageCloudCoverage = CloudCoverage(
@@ -231,40 +232,24 @@ def perform_complete_analysis(InputOptions, ImageInfoCommon, ConfigOptions, inpu
     Summary_ = Summary(Image_, InputOptions, ImageAnalysis_,
                        InstrumentCalibration_, ImageSkyBrightness, ImageCloudCoverage)
 
-    # gc.collect()
-    # print(gc.garbage)
-
-
-def get_config_filename(InputOptions):
-    config_file = config_file_default
-    try:
-        assert(InputOptions.configfile != False)
-    except:
-        print(str(inspect.stack()[0][2:4][::-1]) +
-              ': config file not specified, using the default one:')
-    else:
-        config_file = InputOptions.configfile
-
-    return(config_file)
-
 
 if __name__ == '__main__':
-    # gc.set_debug(gc.DEBUG_STATS)
-    PlatformHelp_ = PlatformHelp()
-    InputOptions = ReadOptions(sys.argv)
 
-    config_file = get_config_filename(InputOptions)
-    ConfigOptions_ = ConfigOptions(config_file)
-    ImageInfoCommon = ImageInfo()
-    ImageInfoCommon.config_processing_common(ConfigOptions_, InputOptions)
-    try:
-        assert(InputOptions.show_help == False)
-    except:
-        print(inspect.stack()[0][2:4][::-1])
-        # Show help and halt
-        PlatformHelp_.show_help()
-        raise SystemExit
+    import ConfigParser as configparser
 
-    for input_file in InputOptions.fits_filename_list:
+    input_options = main()
+    print input_options
+    #PlatformHelp_ = PlatformHelp()
+    #input_options = ReadOptions(sys.argv)
+
+    configs = configparser.SafeConfigParser(defaults={'a': '100'})
+    configs.read('config.ini')
+
+    config_options = ConfigOptions(input_options.configfile)
+
+    image_info_common = ImageInfo()
+    image_info_common.config_processing_common(config_options, input_options)
+
+    for input_file in input_options.fits_filename_list:
         perform_complete_analysis(
-            InputOptions, ImageInfoCommon, ConfigOptions_, input_file)
+            input_options, image_info_common, config_options, configs, input_file)

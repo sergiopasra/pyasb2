@@ -9,20 +9,17 @@
 # ____________________________
 
 
-DEBUG = False
-
-
 class ConfigOptions(object):
     ''' Add and remove options '''
     def __init__(self, config_file):
-        self.FileOptions = []
+        self.file_options = []
         self.read_config_file(config_file)
 
     def add_option(self, param, value):
-        self.FileOptions.append([param, value])
+        self.file_options.append([param, value])
 
     def remove_option(self, param, value):
-        self.FileOptions.pop([param, value])
+        self.file_options.pop([param, value])
 
     def add_param_value(self, textline):
         line_split = textline.split("=")

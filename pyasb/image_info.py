@@ -49,7 +49,7 @@ class ImageInfo(ImageTest):
                 (np.min(self.resolution) / 2 - 10 * self.base_radius)\
                 / (180.0 * np.sqrt(2) / np.pi)
 
-    def config_processing_common(self, ConfigOptions, InputOptions):
+    def config_processing_common(self, config_options, input_options):
         # Default values
         self.darkframe = False
         self.biasframe = False
@@ -64,9 +64,9 @@ class ImageInfo(ImageTest):
         # A better aprox would be np.min(self.resolution)/(180.0*np.sqrt(2)/np.pi)
         # but it depends on the image, which has not yet been read.
 
-        for atribute in list(InputOptions.__dict__):
-            ConfigOptions.FileOptions.append(
-                [atribute, vars(InputOptions)[atribute]])
+        for atribute in list(input_options.__dict__):
+            config_options.file_options.append(
+                [atribute, vars(input_options)[atribute]])
 
         # Config processing
 
@@ -88,7 +88,7 @@ class ImageInfo(ImageTest):
             "skybrightness_table_path", "cloudmap_path", "clouddata_path",
             "summary_path", "catalog_filename", "darkframe", "biasframe"]
 
-        for option in ConfigOptions.FileOptions:
+        for option in config_options.file_options:
             setattr(self, option[0], option[1])
             if option[0] in list_float_options:
                 setattr(self, option[0], float(option[1]))
@@ -112,7 +112,7 @@ class ImageInfo(ImageTest):
                 self.longitude = float(option[1])
             # obs_latitude and obs_longitude were the old name.
 
-    def config_processing_specificfilter(self, ConfigOptions):
+    def config_processing_specificfilter(self, configs, ConfigOptions):
         filters = ["U", "B", "V", "R", "I"]
 
         self.zero_points = {}
@@ -127,7 +127,8 @@ class ImageInfo(ImageTest):
             self.flatfield["Johnson_" + the_filter] = False
 
         # Options that depends on the filter
-        for option in ConfigOptions.FileOptions:
+        for option in ConfigOptions.file_options:
+            print 'FILE OPTIONS', option
             for the_filter in xrange(len(filters)):
                 filter_name = "Johnson_" + filters[the_filter]
                 if option[0] == "zero_point_" + filters[the_filter]:
