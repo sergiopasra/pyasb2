@@ -11,8 +11,8 @@
 
 import numpy as np
 
-from load_fitsimage import ImageTest
-from astrometry import pyephem_setup_real
+from .load_fitsimage import ImageTest
+from .astrometry import pyephem_setup_real
 
 
 class ImageInfo(ImageTest):
@@ -31,10 +31,10 @@ class ImageInfo(ImageTest):
             self.date_array[3] + ":" + \
             self.date_array[4] + ":" + self.date_array[5]
 
-        ObsPyephem = pyephem_setup_real(self)
-        self.local_sidereal_time = ObsPyephem.sidereal_time() * 12. / np.pi
-        ObsPyephem.lon = 0
-        self.sidereal_time = ObsPyephem.sidereal_time() * 12. / np.pi
+        obspyephem = pyephem_setup_real(self)
+        self.local_sidereal_time = obspyephem.sidereal_time() * 12. / np.pi
+        obspyephem.lon = 0
+        self.sidereal_time = obspyephem.sidereal_time() * 12. / np.pi
 
         # Exposure (float), resolution (2d int array), filter (str)
         self.exposure = ImageTest.correct_exposure(fits_header)
@@ -112,7 +112,7 @@ class ImageInfo(ImageTest):
                 self.longitude = float(option[1])
             # obs_latitude and obs_longitude were the old name.
 
-    def config_processing_specificfilter(self, configs, ConfigOptions):
+    def config_processing_specificfilter(self, ConfigOptions, configs):
         filters = ["U", "B", "V", "R", "I"]
 
         self.zero_points = {}
@@ -126,36 +126,56 @@ class ImageInfo(ImageTest):
             self.background_levels["Johnson_" + the_filter] = [False, False]
             self.flatfield["Johnson_" + the_filter] = False
 
+        for filt in filters:
+            filter_name = "Johnson_{}".format(filt)
+            self.zero_points[filter_name] = \
+                [configs.getfloat(filter_name, 'zero_point'),
+                 configs.getfloat(filter_name, 'zero_point_err')]
+            self.color_terms[filter_name] = \
+                [configs.getfloat(filter_name, 'color_term_0'),
+                 configs.getfloat(filter_name, 'color_term_1')]
+            self.background_levels[filter_name] = \
+                [configs.getfloat(filter_name, 'bkgnd_min'),
+                 configs.getfloat(filter_name, 'bkgnd_max')]
+
+        for the_filter in filters:
+            self.zero_points["Johnson_" + the_filter] = [False, False]
+            self.color_terms["Johnson_" + the_filter] = [0, 0]
+            self.background_levels["Johnson_" + the_filter] = [False, False]
+            self.flatfield["Johnson_" + the_filter] = False
+
+
         # Options that depends on the filter
         for option in ConfigOptions.file_options:
-            print 'FILE OPTIONS', option
-            for the_filter in xrange(len(filters)):
-                filter_name = "Johnson_" + filters[the_filter]
-                if option[0] == "zero_point_" + filters[the_filter]:
+            for the_filter in filters:
+                filter_name = "Johnson_" + the_filter
+                if option[0] == "zero_point_" + the_filter:
                     self.zero_points[filter_name] = \
                         [float(option[1].split(",")[0]), float(
                             option[1].split(",")[1])]
-                    if "Johnson_" + filters[the_filter] == self.used_filter:
+                    if "Johnson_" + the_filter == self.used_filter:
                         self.used_zero_point = self.zero_points[filter_name]
-                elif option[0] == "color_term_" + filters[the_filter]:
+                elif option[0] == "color_term_" + the_filter:
                     self.color_terms[filter_name] = \
                         [float(option[1].split(",")[0]), float(
                             option[1].split(",")[1])]
-                    if "Johnson_" + filters[the_filter] == self.used_filter:
+                    if "Johnson_" + the_filter == self.used_filter:
                         self.sel_color_terms = self.color_terms[filter_name]
-                elif option[0] == "bkgnd_minmax_" + filters[the_filter]:
+                elif option[0] == "bkgnd_minmax_" + the_filter:
                     self.background_levels[filter_name] = [float(option[1].split(",")[0]),
                                                            float(option[1].split(",")[1])]
-                    if "Johnson_" + filters[the_filter] == self.used_filter:
+                    if "Johnson_" + the_filter == self.used_filter:
                         self.sel_background_levels = self.background_levels[
                             filter_name]
-                elif option[0] == "flatfield_" + filters[the_filter]:
+                elif option[0] == "flatfield_" + the_filter:
                     self.flatfield[filter_name] = str(
                         option[1]).replace(" ", "")
-                    if "Johnson_" + filters[the_filter] == self.used_filter:
+                    if "Johnson_" + the_filter == self.used_filter:
                         self.sel_flatfield = self.flatfield[filter_name]
 
+
         # Some hacks to improve detectability in specific filters
+
 
         if self.used_filter == 'Johnson_B':
             self.base_radius = self.base_radius * 1.2

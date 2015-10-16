@@ -23,20 +23,20 @@ class SkyMap(object):
 
     ''' SkyMap class '''
 
-    def __init__(self, ImageInfo, FitsImage):
-        # Set ImageInfo as local sub-object, we will use
+    def __init__(self, image_info, fits_image):
+        # Set image_info as local sub-object, we will use
         # it a lot.
-        self.ImageInfo = ImageInfo
+        self.image_info = image_info
 
-        if self.ImageInfo.skymap_path == False:
+        if False:#not self.image_info.skymap_path:
             # Don't draw anything
             print('Skipping Skymap Graph ...')
         else:
             print('Star Map plot ...')
             self.stretch_data(
-                FitsImage.fits_data_notcalibrated,
-                ImageInfo.perc_low,
-                ImageInfo.perc_high)
+                fits_image.fits_data_notcalibrated,
+                image_info.perc_low,
+                image_info.perc_high)
             # self.setup_skymap()
             # self.draw_catalog_stars()
             # self.draw_detected_stars()
@@ -48,20 +48,20 @@ class SkyMap(object):
         '''
         To be executed at the beginning (no stars)
         '''
-        if (self.ImageInfo.skymap_path != False):
+        if True:
             self.define_skymap()
             self.draw_skymap_data()
             self.skyfigure.canvas.draw()
             self.skyfigure.canvas.flush_events()
 
-            if (self.ImageInfo.skymap_path == "screen"):
-                plt.show(block=False)
+            #if (self.image_info.skymap_path == "screen"):
+            plt.show(block=False)
 
     def complete_skymap(self):
         ''' 
         To be executed when an astrometric solution is found
         '''
-        if (self.ImageInfo.skymap_path != False):
+        if True:
             self.draw_catalog_stars()
             self.draw_detected_stars()
             self.draw_polar_axes()
@@ -118,7 +118,7 @@ class SkyMap(object):
             self.alti = self.StarCatalog.StarList_Tot[
                 self.star_index].altit_real
             px, py = horiz2xy(
-                self.azim, self.alti, self.ImageInfo, derotate=True)
+                self.azim, self.alti, self.image_info, derotate=True)
 
             try:
                 self.preliminary_star.remove()
@@ -148,7 +148,7 @@ class SkyMap(object):
             self.alti = self.StarCatalog.StarList_Tot[
                 self.star_index].altit_real
             px, py = horiz2xy(
-                self.azim, self.alti, self.ImageInfo, derotate=True)
+                self.azim, self.alti, self.image_info, derotate=True)
             self.preliminary_star.remove()
             self.preliminary_star = \
                 self.skyimage.scatter(
@@ -169,7 +169,7 @@ class SkyMap(object):
             self.alti = self.StarCatalog.StarList_Tot[
                 self.star_index].altit_real
             px, py = horiz2xy(
-                self.azim, self.alti, self.ImageInfo, derotate=True)
+                self.azim, self.alti, self.image_info, derotate=True)
             self.preliminary_star = \
                 self.skyimage.scatter(
                     px, py, marker='o', c='yellow', alpha=0.5)
@@ -194,20 +194,20 @@ class SkyMap(object):
         from astrometry import horiz2xy
 
         def horiz2xy_chi2(sol, az, alt, x, y):
-            self.ImageInfo.radial_factor = sol[0]
-            self.ImageInfo.azimuth_zeropoint = sol[1]
+            self.image_info.radial_factor = sol[0]
+            self.image_info.azimuth_zeropoint = sol[1]
             if (full == True):
-                self.ImageInfo.delta_x = sol[2]
-                self.ImageInfo.delta_y = sol[3]
-                self.ImageInfo.latitude_offset = sol[4]
-                self.ImageInfo.longitude_offset = sol[5]
+                self.image_info.delta_x = sol[2]
+                self.image_info.delta_y = sol[3]
+                self.image_info.latitude_offset = sol[4]
+                self.image_info.longitude_offset = sol[5]
             else:
-                self.ImageInfo.delta_x = 0
-                self.ImageInfo.delta_y = 0
-                self.ImageInfo.latitude_offset = 0
-                self.ImageInfo.longitude_offset = 0
+                self.image_info.delta_x = 0
+                self.image_info.delta_y = 0
+                self.image_info.latitude_offset = 0
+                self.image_info.longitude_offset = 0
 
-            xf, yf = horiz2xy(az, alt, self.ImageInfo, derotate=True)
+            xf, yf = horiz2xy(az, alt, self.image_info, derotate=True)
             return(np.sum((xf - x) ** 2 + (yf - y) ** 2))
 
         coords = np.array(self.identified_stars)[:, 1:]  # Remove star name
@@ -251,7 +251,7 @@ class SkyMap(object):
 
         # For the northern hemisphere, put Polaris as the first star
         try:
-            assert(self.ImageInfo.latitude > 0)
+            assert(self.image_info.latitude > 0)
             polaris_index = [
                 Star.HDcode for Star in self.StarCatalog.StarList_Tot].index("HD8890")
             AuxStar = self.StarCatalog.StarList_Tot[polaris_index]
@@ -277,9 +277,9 @@ class SkyMap(object):
         self.skyimage.imshow(self.stretched_fits_data, cmap=mpl.cm.gray)
 
         self.skyimage.axis(
-            [0, self.ImageInfo.resolution[0], 0, self.ImageInfo.resolution[1]])
-        information = str(self.ImageInfo.date_string) + " UTC\n" + str(self.ImageInfo.latitude) + 5 * " " +\
-            str(self.ImageInfo.longitude) + "\n" + self.ImageInfo.used_filter
+            [0, self.image_info.resolution[0], 0, self.image_info.resolution[1]])
+        information = str(self.image_info.date_string) + " UTC\n" + str(self.image_info.latitude) + 5 * " " +\
+            str(self.image_info.longitude) + "\n" + self.image_info.used_filter
 
         self.skyimage.text(0.010, 0.010, information, fontsize='small', color='white',
                            transform=self.skyimage.transAxes, backgroundcolor=(0, 0, 0, 0.75))
@@ -289,10 +289,10 @@ class SkyMap(object):
     def draw_polar_axes(self):
         ''' Draws meridian and altitude isolines. '''
 
-        zenith_xy = zenith_position(self.ImageInfo)
+        zenith_xy = zenith_position(self.image_info)
 
         for each_altitude in np.arange(0, 90, 15):
-            coord_altitude_0 = horiz2xy(0, each_altitude, self.ImageInfo)
+            coord_altitude_0 = horiz2xy(0, each_altitude, self.image_info)
             radius = math.sqrt(
                 (coord_altitude_0[0] - zenith_xy[0]) ** 2 +
                 (coord_altitude_0[1] - zenith_xy[1]) ** 2)
@@ -308,7 +308,7 @@ class SkyMap(object):
         key_azimuths = {0: "N", 90: "E", 180: "S", 270: "W"}
 
         for each_azimuth in np.arange(0, 360, 30):
-            coord_azimuth_0 = horiz2xy(each_azimuth, 0, self.ImageInfo)
+            coord_azimuth_0 = horiz2xy(each_azimuth, 0, self.image_info)
             self.skyimage.plot(
                 [zenith_xy[0], coord_azimuth_0[0]],
                 [zenith_xy[1], coord_azimuth_0[1]],
@@ -322,7 +322,7 @@ class SkyMap(object):
             self.skyimage.annotate(
                 azimuth_label,
                 xy=horiz2xy(
-                    each_azimuth, self.ImageInfo.min_altitude, self.ImageInfo),
+                    each_azimuth, self.image_info.min_altitude, self.image_info),
                 color='k',
                 alpha=0.2,
                 fontsize=10)
@@ -361,14 +361,14 @@ class SkyMap(object):
 
     def show_figure(self):
         #self.skyimage.legend(('Catalog','Detected','Photometric'),loc='upper right')
-        if self.ImageInfo.skymap_path == "screen":
+        if True:#self.image_info.skymap_path == "screen":
             plt.show()
             # self.skyfigure.canvas.draw()
             # self.skyfigure.canvas.flush_events()
         else:
             skymap_filename = str("%s/SkyMap_%s_%s_%s.png" % (
-                self.ImageInfo.skymap_path, self.ImageInfo.obs_name,
-                self.ImageInfo.fits_date, self.ImageInfo.used_filter))
+                self.image_info.skymap_path, self.image_info.obs_name,
+                self.image_info.fits_date, self.image_info.used_filter))
 
             plt.tight_layout(pad=0)
             plt.savefig(skymap_filename)

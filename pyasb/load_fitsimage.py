@@ -11,9 +11,10 @@
 
 
 import os
-import inspect
 import numpy as np
-import astropy.io.fits as pyfits
+import warnings
+
+import astropy.io.fits as fits
 from .astrometry import ImageCoordinates
 
 
@@ -23,61 +24,29 @@ class ImageTest(object):
 
     @staticmethod
     def correct_exposure(file_header):
-        # Exposure
-        try:
-            texp = float(file_header['EXPOSURE'])
-        except:
-            print(inspect.stack()[0][2:4][::-1])
-            raise
-        else:
-            #assert texp>0., '0s exposure time detected.'
-            return texp
+
+        return file_header['EXPOSURE']
 
     @staticmethod
     def correct_date(file_header):
         # Date and time
-        try:
-            date = file_header['DATE']
-        except:
-            print(inspect.stack()[0][2:4][::-1])
-            raise
-        else:
-            assert len(date) == 15 and date[
-                8] == "_", 'Date format not YYYYMMDD_HHMMSS'
-            return date
+
+        return file_header['DATE']
+
 
     @staticmethod
     def correct_resolution(file_header):
-        # Resolution
-        try:
-            resolution = [
-                int(file_header['NAXIS1']), int(file_header['NAXIS2'])]
-        except:
-            print(inspect.stack()[0][2:4][::-1])
-            raise
-        else:
-            assert resolution[0] > 0 and resolution[
-                1] > 0, 'Matrix not 2 dimensional'
-            return resolution
+        resolution = [
+            int(file_header['NAXIS1']), int(file_header['NAXIS2'])]
+        return resolution
+
 
     @staticmethod
     def correct_filter(file_header):
         # Test if there's a known filter
-        try:
-            used_filter = file_header['FILTER']
-        except:
-            print(inspect.stack()[0][2:4][::-1])
-            raise
-        else:
-            # due to an inconsistent format in AstMon,
-            # we found 4 possible formats
-            # 'Jonhson_V','JohnsonV','Johnson_V','JonhsonV'
-            used_filter = used_filter.replace('_', '')
-            assert used_filter[0:7] in [
-                'Johnson', 'Jonhson'], 'Filter type not Johnson'
-            assert used_filter[7:] in [
-                'U', 'B', 'V', 'R', 'I', 'common'], 'Filter not U,B,V,R or I'
-            return 'Johnson_' + used_filter[7:]
+
+        used_filter = file_header['FILTER']
+        return used_filter
 
 
 class FitsImage(ImageTest):
@@ -86,132 +55,105 @@ class FitsImage(ImageTest):
         self.load_science(input_file)
         # Backup original data
         print('Backup original (non-calibrated) data')
-        self.fits_data_notcalibrated = np.array(self.fits_data)
+        self.fits_data_notcalibrated = self.fits_data[:]
 
     def load_science(self, input_file):
-        print('Loading ScienceFrame [' + str(input_file) + '] ...'),
-        try:
-            file_opened = pyfits.open(input_file)
-            self.fits_data = file_opened[0].data
-            self.fits_Header = file_opened[0].header
-            self.fits_Texp = float(
-                ImageTest.correct_exposure(self.fits_Header))
-        except:
-            print(inspect.stack()[0][2:4][::-1])
-            raise
-        else:
-            print('OK')
+        print('Loading ScienceFrame [{}]...'.format(input_file))
+
+        file_opened = fits.open(input_file)
+        self.fits_data = file_opened[0].data
+        self.fits_Header = file_opened[0].header
+        self.fits_Texp = float(
+            ImageTest.correct_exposure(self.fits_Header))
+
+        print('OK')
 
     def load_dark(self, MasterDark):
         print('Loading MasterDark ...'),
-        try:
-            MasterDark_HDU = pyfits.open(MasterDark)
-            self.MasterDark_Data = MasterDark_HDU[0].data
-            self.MasterDark_Header = MasterDark_HDU[0].header
-            self.MasterDark_Texp = float(
-                ImageTest.correct_exposure(self.MasterDark_Header))
-        except:
-            print(inspect.stack()[0][2:4][::-1])
-            raise
-        else:
-            print('OK')
 
-    def load_flat(self, MasterFlat):
-        print('Loading MasterFlat ...'),
-        try:
-            MasterFlat_HDU = pyfits.open(MasterFlat)
-            self.MasterFlat_Data = MasterFlat_HDU[0].data
-            # Normalize MasterFlat
-            self.MasterFlat_Data = self.MasterFlat_Data / \
-                np.mean(self.MasterFlat_Data)
-            self.MasterFlat_Header = MasterFlat_HDU[0].header
-            self.MasterFlat_Texp = float(
-                ImageTest.correct_exposure(self.MasterFlat_Header))
-        except:
-            print(inspect.stack()[0][2:4][::-1])
-            raise
-        else:
-            print('OK')
+        MasterDark_HDU = fits.open(MasterDark)
+        self.MasterDark_Data = MasterDark_HDU[0].data
+        self.MasterDark_Header = MasterDark_HDU[0].header
+        self.MasterDark_Texp = MasterDark_HDU[0].header['EXPOSURE']
+        return MasterDark_HDU
+        print('OK')
+
+    def load_flat(self, masterflat_filename):
+
+        with fits.open(masterflat_filename) as hdul:
+            mflatdata = hdul[0].data
+            mflatdata_norm = mflatdata / np.mean(mflatdata)
+            return mflatdata_norm
 
     def load_bias(self, MasterBias):
         print('Loading MasterBias ...'),
-        try:
-            MasterBias_HDU = pyfits.open(MasterBias)
-            self.MasterBias_Data = MasterBias_HDU[0].data
-            self.MasterBias_Header = MasterBias_HDU[0].header
-            self.MasterBias_Texp = float(
-                ImageTest.correct_exposure(self.MasterBias_Header))
-        except:
-            print(inspect.stack()[0][2:4][::-1])
-            raise
-        else:
-            print('OK')
 
-    def reduce_science_frame(self, MasterDark=None, MasterFlat=None, MasterBias=None, ImageInfo=None):
+        MasterBias_HDU = fits.open(MasterBias)
+        self.MasterBias_Data = MasterBias_HDU[0].data
+        self.MasterBias_Header = MasterBias_HDU[0].header
+        self.MasterBias_Texp = float(
+            ImageTest.correct_exposure(self.MasterBias_Header))
+        return MasterBias_HDU
+
+    def reduce_science_frame(self, master_dark=None, master_flat=None, master_bias=None, image_info=None):
         '''
         Load MasterDark and MasterFlat. MasterBias is neccesary only if working
         with different exposures between Dark and Science frames
         '''
 
         skip_dark = False
-        skip_flat = False
+        skip_flat = True
+        mdarkdata = 0.0
+        mflatdata = 1.0
 
+        print image_info
         # Load FLAT Field
-        try:
-            self.load_flat(MasterFlat)
-        except:
-            print(str(inspect.stack()[0][2:4][::-1]) +
-                  ' WARNING: MasterFlat cannot be loaded, SKIP the flat calibration')
-            skip_flat = True
-        else:
-            skip_flat = False
+
+        if master_flat is not None:
+            try:
+                print('Loading MasterFlat ...'),
+                mflatdata = self.load_flat(master_flat)
+                skip_flat = False
+                print('OK')
+            except StandardError:
+                warnings.warn('MasterFlat cannot be loaded, SKIP the flat calibration', RuntimeWarning)
+                skip_flat = True
 
             # Load DARK Frame
+
+        if master_dark is None:
+            skip_dark = True
+
         try:
-            self.load_dark(MasterDark)
+            mdark_hdul = self.load_dark(master_dark)
+            mdarkdata = mdark_hdul[0].data
         except:
-            ''' Try to use MasterDark as a fixed offset value '''
+            # Try to use MasterDark as a fixed offset value
             try:
-                self.SyntDark_Data = float(MasterDark)
-            except:
-                # raise
-                print(str(inspect.stack()[0][2:4][::-1]) +
-                      ' WARNING: MasterDark cannot be loaded, SKIP the dark calibration')
+                mdarkdata = float(master_dark)
+            except ValueError:
+                warnings.warn('MasterDark cannot be loaded, SKIP the dark calibration', RuntimeWarning)
                 skip_dark = True
             else:
-                print(str(inspect.stack()[0][2:4][::-1]) +
-                      ' WARNING: MasterDark used as a fixed offset value.\n' +
-                      ' Its *STRONGLY* recommended to use a proper MasterDark')
+                msg = 'MasterDark used as a fixed offset value.\n'\
+                     'Its *STRONGLY* recommended to use a proper MasterDark'
+                warnings.warn(msg, RuntimeWarning)
                 skip_dark = False
         else:
-            if self.MasterDark_Texp == self.fits_Texp:
-                self.SyntDark_Data = self.MasterDark_Data
-                self.SyntDark_Texp = self.MasterDark_Texp
-                self.SyntDark_Header = self.MasterDark_Header
-            elif self.MasterDark_Texp != self.fits_Texp and MasterBias == None:
-                if MasterBias == None:
-                    print(
-                        "WARNING: Science and Dark don't have the same exposure ! ")
-                    print('Science_Texp=' + str(self.fits_Texp) +
-                          '; Dark_Texp=' + str(self.MasterDark_Texp))
-                self.SyntDark_Data = self.MasterDark_Data
-                self.SyntDark_Texp = self.MasterDark_Texp
-                self.SyntDark_Header = self.MasterDark_Header
-            elif self.MasterDark_Texp != self.fits_Texp and MasterBias != None:
-                self.load_bias(MasterBias)
-                print('Creating synthetic Dark ...'),
-                try:
-                    self.SyntDark_Data = (self.MasterDark_Data - self.MasterBias_Data) / \
-                        (self.MasterDark_Texp - self.MasterBias_Data) *\
-                        (self.ScienceFrame_Texp - self.MasterBias_Texp) +\
-                        self.MasterBias_Data
-                    self.SyntDark_Texp = self.fits_Texp
-                    self.SyntDark_Header = self.MasterDark_Header
-                    self.SyntDark_Header['EXPOSURE'] = self.SyntDark_Texp
-                except:
-                    print(inspect.stack()[0][2:4][::-1])
-                    raise
+            texpdark = float(mdark_hdul[0].header['EXPOSURE'])
+            if texpdark == self.fits_Texp:
+                mdarkdata = mdark_hdul[0].data
+            else:
+                if master_bias is None:
+                    msg = "Science and Dark don't have the same exposure ({} vs {})!".format(texpdark, self.fits_Texp)
+                    warnings.warn(msg, RuntimeWarning)
+                    mdarkdata = mdark_hdul[0].data
                 else:
+                    print('Creating synthetic Dark ...'),
+                    mbias_hdul = self.load_bias(master_bias)
+                    mdarkdata = mdark_hdul[0].data - mbias_hdul[0].data
+                    mdarkdata *= (self.fits_Texp / texpdark)
+                    mdarkdata += mbias_hdul[0].data
                     print('OK')
 
             skip_dark = False
@@ -219,19 +161,17 @@ class FitsImage(ImageTest):
         print('Calibrating image with MasterFlat and MasterDark ...'),
 
         # Subtract dark frame
-        if skip_dark == False:
-            self.fits_data = self.fits_data - self.SyntDark_Data
+        if not skip_dark:
+            self.fits_data = self.dark_correction(self.fits_data, mdarkdata)
 
         # Subtract background / bias (measure it in the non-illuminated corners
         # of the image).
-        try:
-            assert(
-                self.subtract_corners_background == True and ImageInfo != None)
-        except:
+        if self.subtract_corners_background and image_info is not None:
             pass
         else:
-            ImageCoordinates_ = ImageCoordinates(ImageInfo)
-            data_corners = self.fits_data[ImageCoordinates_.altitude_map < -20]
+            print ('Other correction')
+            image_coordinates = ImageCoordinates(image_info)
+            data_corners = self.fits_data[image_coordinates.altitude_map < -20]
             self.bias_image_median = np.median(data_corners)
             self.bias_image_std = np.std(data_corners)
             self.bias_image_err = self.bias_image_std / \
@@ -240,37 +180,42 @@ class FitsImage(ImageTest):
             print("Removed: %.2f +/- %.2f counts from measured background"
                   % (self.bias_image_median, self.bias_image_err))
 
-            if ImageInfo.summary_path not in [False, "False", "false", "F", "screen"]:
-                if not os.path.exists(ImageInfo.summary_path):
-                    os.makedirs(ImageInfo.summary_path)
+            if hasattr(image_info, 'summary_path') and \
+                            image_info.summary_path not in [False, "False", "false", "F", "screen"]:
+                if not os.path.exists(image_info.summary_path):
+                    os.makedirs(image_info.summary_path)
                 measured_bias_log = open(
-                    ImageInfo.summary_path + '/measured_image_bias.txt', 'a+')
-                text_to_log = str(ImageInfo.date_string) + ',' + str(ImageInfo.used_filter) + ',' +\
+                    image_info.summary_path + '/measured_image_bias.txt', 'a+')
+                text_to_log = str(image_info.date_string) + ',' + str(image_info.used_filter) + ',' +\
                     str(self.bias_image_median) + ',' + \
                     str(self.bias_image_err) + '\r\n'
                 measured_bias_log.write(text_to_log)
                 measured_bias_log.close()
 
         # Flat field correction
-        if skip_flat == False:
-            # Skip flat correction for points with <10% illumination?
-            # self.MasterFlat_Data[self.MasterFlat_Data<np.mean(self.MasterFlat_Data)/10.]=1.
-            self.fits_data = self.fits_data / self.MasterFlat_Data
+        if not skip_flat:
+            self.fits_data = self.flat_field_correction(self.fits_data, mflatdata)
 
         print('OK')
 
-    def flip_image_if_needed(self, ImageInfo):
-        if (ImageInfo.flip_image == True):
-            try:
-                self.fits_data_notcalibrated = np.fliplr(
-                    self.fits_data_notcalibrated)
-            except:
-                print('Warning. Cannot flip raw image as requested')
+    def dark_correction(self, data, masterdark_data):
+        return data - masterdark_data
 
-            try:
-                self.fits_data = np.fliplr(self.fits_data)
-            except:
-                print('Warning. Cannot flip calibrated image as requested')
+    def flat_field_correction(self, data, masterflat_data):
+        return data / masterflat_data
+
+    def flip_image(self):
+
+        try:
+            self.fits_data_notcalibrated = np.fliplr(
+                self.fits_data_notcalibrated)
+        except StandardError:
+            print('Warning. Cannot flip raw image as requested')
+
+        try:
+            self.fits_data = np.fliplr(self.fits_data)
+        except StandardError:
+            print('Warning. Cannot flip calibrated image as requested')
 
     def __clear__(self):
         backup_attributes = [

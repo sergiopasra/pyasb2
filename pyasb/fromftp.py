@@ -16,7 +16,6 @@ import os
 import inspect
 import datetime
 import time
-import signal
 import urllib
 
 import ftputil
@@ -35,16 +34,6 @@ register_analyzed_files = base_dir + "/register.txt"
 
 ftp_images_since_reconnect = 0
 ftp_max_images_until_reconnect = 20
-
-
-# ~~~~~~~~~~ Halt handler ~~~~~~~~~~~
-def handler(signum, frame):
-    print 'Signal handler called with signal', signum
-    print "CTRL-C pressed"
-    sys.exit(0)
-
-signal.signal(signal.SIGTERM, handler)
-signal.signal(signal.SIGINT, handler)
 
 
 class FtpSession(object):

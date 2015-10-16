@@ -19,29 +19,30 @@ from __future__ import print_function
 
 class Summary(object):
 
-    def __init__(self, Image, InputOptions, ImageAnalysis, InstrumentCalibration,
-                 ImageSkyBrightness, CloudCoverage):
-        self.summarize_results(InputOptions, Image, ImageAnalysis,
-                               InstrumentCalibration, ImageSkyBrightness, CloudCoverage)
-        self.save_summary_to_file(Image.ImageInfo)
+    def __init__(self, image, input_options, image_analysis, instrument_calibration,
+                 image_sky_brightness, cloud_coverage):
+        self.summarize_results(input_options, image, image_analysis,
+                               instrument_calibration, image_sky_brightness,
+                               cloud_coverage)
+        self.save_summary_to_file(image.image_info)
 
-    def summarize_results(self, InputOptions, Image, ImageAnalysis,
+    def summarize_results(self, InputOptions, image, ImageAnalysis,
                           InstrumentCalibration, ImageSkyBrightness, CloudCoverage):
 
-        sum_date = str(Image.ImageInfo.fits_date)
-        sum_filter = str(Image.ImageInfo.used_filter)
+        sum_date = str(image.image_info.fits_date)
+        sum_filter = str(image.image_info.used_filter)
         sum_stars = str(
-            InstrumentCalibration.BouguerFit.Regression.Nstars_initial)
+            InstrumentCalibration.bouguer_fit.Regression.Nstars_initial)
         sum_gstars = str(
-            "%.1f" % float(InstrumentCalibration.BouguerFit.Regression.Nstars_rel))
+            "%.1f" % float(InstrumentCalibration.bouguer_fit.Regression.Nstars_rel))
         sum_zpoint = \
-            str("%.3f" % float(InstrumentCalibration.BouguerFit.Regression.mean_zeropoint)) + ' +/- ' +\
+            str("%.3f" % float(InstrumentCalibration.bouguer_fit.Regression.mean_zeropoint)) + ' +/- ' +\
             str("%.3f" % float(
-                InstrumentCalibration.BouguerFit.Regression.error_zeropoint))
+                InstrumentCalibration.bouguer_fit.Regression.error_zeropoint))
         sum_extinction = \
-            str("%.3f" % float(InstrumentCalibration.BouguerFit.Regression.extinction)) + ' +/- ' +\
+            str("%.3f" % float(InstrumentCalibration.bouguer_fit.Regression.extinction)) + ' +/- ' +\
             str("%.3f" % float(
-                InstrumentCalibration.BouguerFit.Regression.error_extinction))
+                InstrumentCalibration.bouguer_fit.Regression.error_extinction))
         sum_skybrightness = \
             str("%.3f" % float(ImageSkyBrightness.SBzenith)) + ' +/- ' +\
             str("%.3f" % float(ImageSkyBrightness.SBzenith_err))
@@ -53,10 +54,11 @@ class Summary(object):
             [sum_date, sum_filter, sum_stars, sum_gstars,
              sum_zpoint, sum_extinction, sum_skybrightness, sum_cloudcoverage]
 
-    def save_summary_to_file(self, ImageInfo):
-        try:
-            assert(ImageInfo.summary_path != False)
-        except:
+    def save_summary_to_file(self, image_info):
+
+        spath = getattr(image_info, 'summary_path', None)
+
+        if spath is None or spath is False:
             print('Skipping write summary to file')
         else:
             print('Write summary to file')
@@ -69,12 +71,17 @@ class Summary(object):
                     content_line += element
                 content.append(content_line + ", ")
 
-            if ImageInfo.summary_path == "screen":
+            if spath == "screen":
                 print(content)
             else:
                 summary_filename = str("%s/Summary_%s_%s_%s.txt" % (
-                    ImageInfo.summary_path, ImageInfo.obs_name,
-                    ImageInfo.fits_date, ImageInfo.used_filter))
+                    image_info.summary_path, image_info.obs_name,
+                    image_info.fits_date, image_info.used_filter))
+                summary_filename1 = "%s/Summary_%s_%s_%s.txt" % (
+                    image_info.summary_path, image_info.obs_name,
+                    image_info.fits_date, image_info.used_filter)
+
+                assert summary_filename == summary_filename1
 
                 summaryfile = open(summary_filename, 'w+')
                 summaryfile.writelines(content)

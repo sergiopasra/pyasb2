@@ -10,24 +10,11 @@
 # ____________________________
 
 
-DEBUG = False
-
-import sys
 import inspect
-import signal
+
 import numpy as np
 import astropy.io.fits as pyfits
 import datetime
-
-
-# ~~~~~~~~~~ Halt handler ~~~~~~~~~~~
-def handler(signum, frame):
-    print 'Signal handler called with signal', signum
-    print "CTRL-C pressed"
-    sys.exit(0)
-
-signal.signal(signal.SIGTERM, handler)
-signal.signal(signal.SIGINT, handler)
 
 
 def verbose(function, *args):

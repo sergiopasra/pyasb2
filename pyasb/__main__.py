@@ -7,8 +7,6 @@
 # This module is part of the PyASB project,
 # created and maintained by Miguel Nievas [UCM].
 
-
-import signal
 import sys
 import inspect
 
@@ -29,49 +27,40 @@ from .user import main
 config_file_default = 'config.cfg'
 
 
-# ~~~~~~~~~~ Halt handler ~~~~~~~~~~~
-def handler(signum, frame):
-    print 'Signal handler called with signal', signum
-    print "CTRL-C pressed"
-    raise SystemExit
-    # sys.exit(0)
-
-signal.signal(signal.SIGTERM, handler)
-signal.signal(signal.SIGINT, handler)
-
-
 #@profile
 class LoadImage(object):
 
-    def __init__(self, InputOptions, ImageInfo, ConfigOptions, configs, input_file=None):
+    def __init__(self, input_options, image_info,
+                 config_options, configs,
+                 input_file=None):
         # Load Image file list
-        if input_file == None:
-            input_file = InputOptions.fits_filename_list[0]
 
-        ''' Load fits image '''
-        self.FitsImage = FitsImage(input_file)
-        # Local copy of ImageInfo. We will process it further.
-        self.ImageInfo = ImageInfo
-        self.ImageInfo.read_header(self.FitsImage.fits_Header)
-        self.ImageInfo.config_processing_specificfilter(ConfigOptions, configs)
+        if input_file == None:
+            input_file = input_options.fits_filename_list[0]
+
+        # Load fits image '''
+        self.fits_image = FitsImage(input_file)
+        # Local copy of image_info. We will process it further.
+        self.image_info = image_info
+        self.image_info.read_header(self.fits_image.fits_Header)
+        self.image_info.config_processing_specificfilter(config_options, configs)
 
         try:
-            self.FitsImage.subtract_corners_background = True
-            self.FitsImage.reduce_science_frame(
-                self.ImageInfo.darkframe,
-                self.ImageInfo.sel_flatfield,
-                MasterBias=None,
-                ImageInfo=self.ImageInfo)
+            self.fits_image.subtract_corners_background = True
+            self.fits_image.reduce_science_frame(
+                self.image_info.darkframe,
+                self.image_info.sel_flatfield,
+                master_bias=None,
+                image_info=self.image_info)
         except:
-            # raise
-            print(inspect.stack()[0][2:4][::-1])
             print('Cannot reduce science frame')
+            raise
 
         # Flip image if needed
-        self.FitsImage.flip_image_if_needed(self.ImageInfo)
+        self.fits_image.flip_image_if_needed(self.image_info)
 
-        self.FitsImage.__clear__()
-        self.output_paths(InputOptions)
+        self.fits_image.__clear__()
+        self.output_paths(input_options)
 
     def output_paths(self, InputOptions):
         # Output file paths (NOTE: should be moved to another file or at least separated function)
@@ -84,86 +73,65 @@ class LoadImage(object):
 
         for path in path_list:
             try:
-                setattr(self.ImageInfo, path, getattr(InputOptions, path))
+                setattr(self.image_info, path, getattr(InputOptions, path))
             except:
                 try:
                     getattr(InputOptions, path)
                 except:
-                    setattr(self.ImageInfo, path, False)
+                    setattr(self.image_info, path, False)
 
 #@profile
 
 
 class ImageAnalysis(object):
 
-    def __init__(self, Image):
+    def __init__(self, image):
         ''' Analize image and perform star astrometry & photometry. 
-            Returns ImageInfo and StarCatalog'''
-        self.StarCatalog = StarCatalog(Image.ImageInfo)
+            Returns image_info and StarCatalog'''
+        self.StarCatalog = StarCatalog(image.image_info)
 
-        if (Image.ImageInfo.calibrate_astrometry == True):
-            Image.ImageInfo.skymap_path = "screen"
-            TheSkyMap = SkyMap(Image.ImageInfo, Image.FitsImage)
-            TheSkyMap.setup_skymap()
-            TheSkyMap.set_starcatalog(self.StarCatalog)
-            TheSkyMap.astrometry_solver()
+        if (image.image_info.calibrate_astrometry == True):
+            image.image_info.skymap_path = "screen"
+            sky_map = SkyMap(image.image_info, image.FitsImage)
+            sky_map.setup_skymap()
+            sky_map.set_starcatalog(self.StarCatalog)
+            sky_map.astrometry_solver()
 
         self.StarCatalog.process_catalog_specific(
-            Image.FitsImage, Image.ImageInfo)
-        self.StarCatalog.save_to_file(Image.ImageInfo)
-        TheSkyMap = SkyMap(Image.ImageInfo, Image.FitsImage)
-        TheSkyMap.setup_skymap()
-        TheSkyMap.set_starcatalog(self.StarCatalog)
-        TheSkyMap.complete_skymap()
-
-'''#@profile
-class MultipleImageAnalysis():
-    def __init__(self,InputOptions):
-        class StarCatalog_():
-            StarList = []
-            StarList_woPhot = []
-        
-        InputFileList = InputOptions.fits_filename_list
-        
-        for EachFile in InputFileList:
-            EachImage = LoadImage(EachFile)
-            EachAnalysis = ImageAnalysis(EachImage)
-            self.StarCatalog.StarList.append(EachAnalysis.StarCatalog.StarList)
-            self.StarCatalog.StarList_woPhot.append(EachAnalysis.StarCatalog.StarList_woPhot)
-'''
-
-#@profile
+            image.FitsImage, image.image_info)
+        self.StarCatalog.save_to_file(image.image_info)
+        sky_map = SkyMap(image.image_info, image.FitsImage)
+        sky_map.setup_skymap()
+        sky_map.set_starcatalog(self.StarCatalog)
+        sky_map.complete_skymap()
 
 
 class InstrumentCalibration(object):
 
-    def __init__(self, ImageInfo, StarCatalog):
+    def __init__(self, image_info, star_catalog):
+
         try:
-            self.BouguerFit = BouguerFit(ImageInfo, StarCatalog)
-        except Exception as e:
-            print(inspect.stack()[0][2:4][::-1])
+            self.bouguer_fit = BouguerFit(image_info, star_catalog)
+        except Exception:
             print('Cannot perform the Bouguer Fit. Error is: ')
-            print type(e)
-            print e
-            exit(0)
-            # raise
+            raise
 
 
 #@profile
 class MeasureSkyBrightness(object):
 
-    def __init__(self, FitsImage, ImageInfo, BouguerFit):
-        ImageCoordinates_ = ImageCoordinates(ImageInfo)
+    def __init__(self, FitsImage, image_info, BouguerFit):
+        ImageCoordinates_ = ImageCoordinates(image_info)
         TheSkyBrightness = SkyBrightness(
-            FitsImage, ImageInfo, ImageCoordinates_, BouguerFit)
+            FitsImage, image_info, ImageCoordinates_, BouguerFit)
         TheSkyBrightnessGraph = SkyBrightnessGraph(
-            TheSkyBrightness, ImageInfo, BouguerFit)
+            TheSkyBrightness, image_info, BouguerFit)
 
         '''
-        TheSkyBrightness = SkyBrightness(ImageInfo)
+        TheSkyBrightness = SkyBrightness(image_info)
         TheSkyBrightness.load_mask(altitude_cut=10)
         TheSkyBrightness.load_sky_image(FitsImage)
-        #TheSkyBrightness.calibrate_image(FitsImage,ImageInfo,BouguerFit)
+        #TheSkyBrightness.calibrate_image(FitsImage,image_info,BouguerFit)
         TheSkyBrightness.zernike_decomposition(BouguerFit,npoints=5000,order=10)
         '''
 
@@ -173,25 +141,30 @@ class MeasureSkyBrightness(object):
 #@profile
 
 
-def perform_complete_analysis(InputOptions, ImageInfoCommon, ConfigOptions, configs, input_file):
-    # Load Image into memory & reduce it.
-        # Clean (no leaks)
-    Image_ = LoadImage(
-        InputOptions, ImageInfoCommon, ConfigOptions, configs, input_file)
+def perform_complete_analysis(input_options, image_info_common,
+                              config_options, configs, input_file):
+
+
+    print 'LOAD IMAGE'
+    image = LoadImage(
+        input_options, image_info_common, config_options, configs, input_file)
 
     # Look for stars that appears in the catalog, measure their fluxes. Generate starmap.
-    # Clean (no leaks)
-    ImageAnalysis_ = ImageAnalysis(Image_)
 
-    print('Image date: ' + str(Image_.ImageInfo.date_string) +
-          ', Image filter: ' + str(Image_.ImageInfo.used_filter))
+    import sys
+    sys.exit(1)
+    print 'IMAGE ANALYSIS'
+    ImageAnalysis_ = ImageAnalysis(image)
+
+    print('Image date: ', image.image_info.date_string,
+          ', Image filter: ', image.image_info.used_filter)
 
     # Create the needed classes for the summary write
-    class InstrumentCalibration_:
+    class InstrumentCalibration_(object):
 
-        class BouguerFit:
+        class BouguerFit(object):
 
-            class Regression:
+            class Regression(object):
                 mean_zeropoint = -1
                 error_zeropoint = -1
                 extinction = -1
@@ -202,8 +175,8 @@ def perform_complete_analysis(InputOptions, ImageInfoCommon, ConfigOptions, conf
     try:
         # Calibrate instrument with image. Generate fit plot.
         # Clean (no leaks)
-        InstrumentCalibration_ = InstrumentCalibration(
-            Image_.ImageInfo,
+        instrumentcalibration_ = InstrumentCalibration(
+            image.image_info,
             ImageAnalysis_.StarCatalog)
     except:
         class ImageSkyBrightness:
@@ -213,9 +186,9 @@ def perform_complete_analysis(InputOptions, ImageInfoCommon, ConfigOptions, conf
     else:
         # Measure sky brightness / background. Generate map.
         ImageSkyBrightness = MeasureSkyBrightness(
-            Image_.FitsImage,
-            Image_.ImageInfo,
-            InstrumentCalibration_.BouguerFit)
+            image.FitsImage,
+            image.image_info,
+            instrumentcalibration_.bouguer_fit)
 
     #
     #    Even if calibration fails,
@@ -225,12 +198,13 @@ def perform_complete_analysis(InputOptions, ImageInfoCommon, ConfigOptions, conf
 
     # Detect clouds on image
     ImageCloudCoverage = CloudCoverage(
-        Image_,
+        image,
         ImageAnalysis_,
-        InstrumentCalibration_.BouguerFit)
+        instrumentcalibration_.bouguer_fit)
 
-    Summary_ = Summary(Image_, InputOptions, ImageAnalysis_,
-                       InstrumentCalibration_, ImageSkyBrightness, ImageCloudCoverage)
+    print 'SUMMARY'
+    Summary_ = Summary(image, input_options, ImageAnalysis_,
+                       instrumentcalibration_, ImageSkyBrightness, ImageCloudCoverage)
 
 
 if __name__ == '__main__':

@@ -21,7 +21,7 @@ def main():
     parser.add_argument('-d', metavar="[year,month,day]",
                         help='Date to be analyzed (AstMon-UCM only), '
                              'month and day are optionaUse alternative config file')
-    parser.add_argument('-om', metavar="output_map_image path",
+    parser.add_argument('-om', action='store_true',
                         help='Output star map image, full or relative path, '
                              'if no output file, show the map on screen')
     parser.add_argument('-ot', metavar="output_photometric_table path",
@@ -46,6 +46,8 @@ def main():
     parser.add_argument('-ost', metavar="output_skybrightness_table path",
                         help='Output Sky Brightness table, full or relative path, '
                              'if no output file, show the graph on screen')
+    parser.add_argument('--path',
+                        help='save path')
     args = parser.parse_args()
     return args
 
