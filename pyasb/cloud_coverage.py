@@ -9,9 +9,6 @@
 # created and maintained by Miguel Nievas [UCM].
 # ____________________________
 
-
-DEBUG = False
-
 import sys
 import inspect
 import copy
@@ -30,15 +27,20 @@ from .star_calibration import StarCatalog
 class CloudCoverage(object):
 
 
-    def __init__(self, Image, ImageAnalysis, BouguerFit):
-        ''' Calculate the mean cloud covering (at the whole image) '''
+    def __init__(self, Image, starcatalog, BouguerFit):
+        """Calculate the mean cloud covering (at the whole image)
+
+        :param starcatalog: Catalog
+        :type StarCatalog
+
+        """
         # Old method, directly from the % stars. Gives higher values
         #TotalStars = len(ImageAnalysis.StarCatalog.StarList_woPhot)
         #TotalStarsWithPhot = len(ImageAnalysis.StarCatalog.StarList)
 
         TotalStars = 0
         TotalStarsWithPhot = 0
-        for Star in ImageAnalysis.StarCatalog.StarList_Tot:
+        for Star in starcatalog.stars_tot:
             if Star.masked == True:
                 continue
             # elif Star.saturated == True: continue
@@ -47,7 +49,7 @@ class CloudCoverage(object):
                 continue
             # Star is not saturated and present in the sky, add it [weighted]
             TotalStars += 1
-            if Star not in ImageAnalysis.StarCatalog.StarList_Det:
+            if Star not in starcatalog.StarList_Det:
                 continue
             # Star has photometric measures, add it [weighted]
             TotalStarsWithPhot += 1
@@ -82,10 +84,10 @@ class CloudCoverage(object):
             print('Measuring Cloud Covering ...')
             self.create_bins()
             # self.star_detection(Image)
-            self.StarCatalog = ImageAnalysis.StarCatalog
+            self.StarCatalog = starcatalog
             self.cloud_coverage(
                 self.StarCatalog.StarList_Det,
-                self.StarCatalog.StarList_Tot, BouguerFit)
+                self.StarCatalog.stars_tot, BouguerFit)
             self.cloud_map(BouguerFit, ImageInfo=Image.ImageInfo)
             self.clouddata_table(ImageInfo=Image.ImageInfo)
 
@@ -99,7 +101,7 @@ class CloudCoverage(object):
         II.min_altitude = 10
         II.skymap_path = False
 
-        self.StarCatalog = StarCatalog(Image.FitsImage, ImageInfo=II)
+        self.StarCatalog = StarCatalog(Image.FitsImage, image_info=II)
         sys.stdout = normal_stdout
 
     def create_bins(self):
@@ -212,8 +214,8 @@ class CloudCoverage(object):
         try:
             assert(ImageInfo.clouddata_path != False)
         except:
-            print(inspect.stack()[0][2:4][::-1])
             print('Skipping write clouddata table to file')
+            raise
         else:
             print('Write clouddata table to file')
             header = '#Altitude\Azimuth'

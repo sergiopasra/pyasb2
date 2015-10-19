@@ -18,23 +18,24 @@ import matplotlib.pyplot as plt
 
 class SkyBrightness(object):
 
-    '''
+    """
     Class with Sky Brightness measure methods.
     Init requires FitsImage, ImageCoordinates, ImageInfo and Bouguerfit objects.
-    '''
+    """
 
-    def __init__(self, FitsImage, ImageInfo, ImageCoordinates, BouguerFit):
-        if ImageInfo.skybrightness_map_path != False:
+    def __init__(self, fits_image, ImageInfo, ImageCoordinates, BouguerFit):
+
+        if ImageInfo.skybrightness_map_path:
             print('Measuring All-Sky Sky Brightness ...')
             # NOTE: This function is very slow, I need to figure how to improve
             # it.
             self.measure_in_grid(
-                FitsImage, ImageInfo, ImageCoordinates, BouguerFit)
+                fits_image, ImageInfo, ImageCoordinates, BouguerFit)
             self.sbdata_table(ImageInfo)
         else:
             print('Measuring SB only at zenith ...')
         self.measure_in_positions(
-            FitsImage, ImageInfo, ImageCoordinates, BouguerFit)
+            fits_image, ImageInfo, ImageCoordinates, BouguerFit)
 
         print("Night sky background at zenith: %.3f+/-%.3f"
               % (self.SBzenith, self.SBzenith_err))
@@ -53,14 +54,14 @@ class SkyBrightness(object):
         sky_flux_err = np.std(
             fits_region_values) / np.sqrt(np.size(fits_region_values))
 
-        sky_brightness = BouguerFit.Regression.mean_zeropoint - \
+        sky_brightness = BouguerFit.regression.mean_zeropoint - \
             2.5 * np.log10(sky_flux / (ImageInfo.exposure * pixel_scale))
-        sky_brightness_err = np.sqrt(BouguerFit.Regression.error_zeropoint ** 2 +
+        sky_brightness_err = np.sqrt(BouguerFit.regression.error_zeropoint ** 2 +
                                      (2.5 * sky_flux_err / (np.log(10) * sky_flux)) ** 2)
 
         return(sky_brightness, sky_brightness_err)
 
-    def measure_in_grid(self, FitsImage, ImageInfo, ImageCoordinates, BouguerFit):
+    def measure_in_grid(self, fits_image, ImageInfo, ImageCoordinates, BouguerFit):
         ''' Returns sky brightness measures in a grid with a given separation
             in degrees and interpolates the result with griddata.'''
         azseparation = 30
@@ -83,7 +84,7 @@ class SkyBrightness(object):
                 'az_max': az + azseparation / 2.,
             }
 
-            fits_region_values = FitsImage.fits_data[
+            fits_region_values = fits_image.fits_data[
                 (np.array(ImageCoordinates.altitude_map >= limits['alt_min']) *
                  np.array(ImageCoordinates.altitude_map < limits['alt_max'])
                  ) * (
@@ -110,9 +111,9 @@ class SkyBrightness(object):
     def sbdata_table(self, ImageInfo):
         try:
             assert(ImageInfo.skybrightness_table_path != False)
-        except:
-            print(inspect.stack()[0][2:4][::-1])
+        except AssertionError:
             print('Skipping write skybrightness table to file')
+            raise
         else:
             print('Write skybrightness table to file')
 
@@ -144,7 +145,7 @@ class SkyBrightness(object):
                 sbdatafile.writelines(content)
                 sbdatafile.close()
 
-    def measure_in_positions(self, FitsImage, ImageInfo, ImageCoordinates, BouguerFit):
+    def measure_in_positions(self, fits_image, ImageInfo, ImageCoordinates, BouguerFit):
         # Measure Sky Brightness at zenith
         try:
             # If previous grid calculus, then extract from that grid
@@ -159,7 +160,7 @@ class SkyBrightness(object):
                 'az_min': 0,
                 'az_max': 360 - 1e-6,
             }
-            fits_zenith_region_values = FitsImage.fits_data[
+            fits_zenith_region_values = fits_image.fits_data[
                 ImageCoordinates.altitude_map >= 90 - zenith_acceptance]
             self.SBzenith, self.SBzenith_err = \
                 self.sky_brightness_region(
@@ -227,8 +228,8 @@ class SkyBrightnessGraph(object):
         # Image information
         image_information = str(ImageInfo.date_string) + " UTC\n" + str(ImageInfo.latitude) + 5 * " " +\
             str(ImageInfo.longitude) + "\n" + ImageInfo.used_filter + 4 * " " +\
-            "K=" + str("%.3f" % float(BouguerFit.Regression.extinction)) + "+-" +\
-            str("%.3f" % float(BouguerFit.Regression.error_extinction)) + "\n" +\
+            "K=" + str("%.3f" % float(BouguerFit.regression.extinction)) + "+-" +\
+            str("%.3f" % float(BouguerFit.regression.error_extinction)) + "\n" +\
             "SB=" + str("%.2f" % float(SkyBrightness.SBzenith)) + "+-" +\
             str("%.2f" % float(SkyBrightness.SBzenith_err)) + \
             " mag/arcsec2 (zenith)"

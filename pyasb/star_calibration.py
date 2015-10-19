@@ -11,64 +11,75 @@
 # created and maintained by Miguel Nievas [UCM].
 # ____________________________
 
-
-DEBUG = False
-
-import inspect
+#import inspect
 
 import ephem
 import numpy as np
 import scipy.stats
+import numpy
 
 from .astrometry import horiz2xy, pyephem_setup_real, eq2horiz
 from .astrometry import calculate_airmass, atmospheric_refraction
 
 
-def verbose(function, *args):
-    '''
-    Run a function in verbose mode
-    '''
-    try:
-        out = function(*args)
-    except:
-        # Something happened while runing function
-        raise
-    else:
-        return(out)
-
-
 class Star(object):
 
-    def __init__(self, StarCatalogLine, ImageInfo):
-        ''' Takes StarCatalogLine (line from catalog file) and 
-              FitsImage, ImageInfo and ObsPyephem objects
+    def __init__(self, rec, image_info):
+        ''' Takes star_catalog_line (line from catalog file) and
+              FitsImage, image_info and ObsPyephem objects
             Returns a Star object with photometric and astrometic properties 
               or a destroy flag if errors ocurred during process'''
-        self.destroy = False
+        self.invalid = False
         self.saturated = False
         self.cold_pixels = False
         self.masked = False
         self.to_be_masked = False
-        self.camera_independent_astrometry(StarCatalogLine, ImageInfo)
 
-    def camera_independent_astrometry(self, StarCatalogLine, ImageInfo):
+        self.camera_independent_astrometry(rec, image_info)
+
+
+    def magnitude_on_image(self, image_info):
+        ''' Set the magnitude and color (#-V) that match image filter.'''
+        if image_info.used_filter == "Johnson_U":
+            self.FilterMag = self.Umag
+            self.Color = self.U_V
+        elif image_info.used_filter == "Johnson_B":
+            self.FilterMag = self.Bmag
+            self.Color = self.B_V
+        elif image_info.used_filter == "Johnson_V":
+            self.FilterMag = self.Vmag
+            self.Color = 0.0
+        elif image_info.used_filter == "Johnson_R":
+            self.FilterMag = self.Rmag
+            self.Color = self.R_V
+        elif image_info.used_filter == "Johnson_I":
+            self.FilterMag = self.Imag
+            self.Color = self.I_V
+        else:
+            self.invalid = True
+
+        try:
+            assert(self.FilterMag < image_info.max_magnitude)
+        except:
+            self.invalid = True
+
+    def camera_independent_astrometry(self, star_catalog_line, image_info):
         # Extract stars from Catalog
-        self.verbose_detection(self.from_catalog, StarCatalogLine,
-                               ImageInfo.used_filter,
-                               errormsg=' Error extracting from catalog')
-        # Estimate magnitude on the given image
-        self.verbose_detection(self.magnitude_on_image, ImageInfo,
-                               errormsg=' Error reading used filter or magnitude>max')
-        # Astrometry for the current star (sky)
-        self.verbose_detection(self.star_astrometry_sky, ImageInfo,
-                               errormsg=' Error performing star astrometry (sky), Star not visible?')
 
-    def camera_dependent_astrometry(self, FitsImage, ImageInfo):
+        self.from_tuple(star_catalog_line, image_info.used_filter)
+        # Estimate magnitude on the given image
+        self.magnitude_on_image(image_info)
+
+        # Astrometry for the current star (sky)
+        self.star_astrometry_sky(image_info)
+
+
+    def camera_dependent_astrometry(self, FitsImage, image_info):
         # Astrometry for the current star (image)
-        self.verbose_detection(self.star_astrometry_image, ImageInfo,
+        self.verbose_detection(self.star_astrometry_image, image_info,
                                errormsg=' Error performing star astrometry (image)')
         # Estimate radius to do the aperture photometry
-        self.verbose_detection(self.photometric_radius, ImageInfo,
+        self.verbose_detection(self.photometric_radius, image_info,
                                errormsg=' Error generating photometric radius')
         # Create regions of stars and star+background
         self.verbose_detection(self.estimate_fits_region_star, FitsImage,
@@ -85,18 +96,18 @@ class Star(object):
         self.verbose_detection(self.estimate_centroid,
                                errormsg=' Star centroid calculated')
 
-    def camera_dependent_photometry(self, FitsImage, ImageInfo):
+    def camera_dependent_photometry(self, FitsImage, image_info):
         # Measure fluxes
         self.verbose_detection(self.measure_star_fluxes, FitsImage.fits_data,
                                errormsg=' Error measuring fluxes')
         # Check if star is detectable
-        self.verbose_detection(self.star_is_detectable, ImageInfo,
+        self.verbose_detection(self.star_is_detectable, image_info,
                                errormsg=' Star is not detectable')
         # Check star saturation
-        self.verbose_detection(self.star_is_saturated, ImageInfo,
+        self.verbose_detection(self.star_is_saturated, image_info,
                                errormsg=' Star is satured or has hot pixels')
         # Check cold pixels
-        self.verbose_detection(self.star_has_cold_pixels, ImageInfo,
+        self.verbose_detection(self.star_has_cold_pixels, image_info,
                                errormsg=' Star has cold pixels')
         # Update regions with new improved centroid.
         self.verbose_detection(self.estimate_fits_region_star, FitsImage,
@@ -109,18 +120,18 @@ class Star(object):
             errormsg=' Error doing optimal photometry')
         # Optimal aperture photometry
         # self.verbose_detection(\
-        # self.optimal_aperture_photometry,ImageInfo,FitsImage.fits_data,\
+        # self.optimal_aperture_photometry,image_info,FitsImage.fits_data,\
         # errormsg=' Error doing optimal photometry')
 
-    def check_star_issues(self, FitsImage, ImageInfo):
+    def check_star_issues(self, FitsImage, image_info):
         # Check if star region is masked
         self.verbose_detection(self.star_region_is_masked, FitsImage,
                                errormsg=' Star is masked')
         # Check if star is detectable (with optimal astrometry)
-        self.verbose_detection(self.star_is_detectable, ImageInfo,
+        self.verbose_detection(self.star_is_detectable, image_info,
                                errormsg=' Star is not detectable')
         # Calculate Bouguer variables
-        self.verbose_detection(self.photometry_bouguervar, ImageInfo,
+        self.verbose_detection(self.photometry_bouguervar, image_info,
                                errormsg=' Error calculating bouguer variables')
         # Append star to star mask
         # self.verbose_detection(self.append_to_star_mask,FitsImage,\
@@ -129,30 +140,44 @@ class Star(object):
             try:
                 self.append_to_star_mask(FitsImage)
             except:
-                print(
-                    str(inspect.stack()[0][2:4][::-1]) + ' Cannot add star to mask')
+                print('Cannot add star to mask')
 
     def clear_objects(self):
-        if DEBUG == True:
-            print('Clearing Object')
-        self.__clear__()
-
-        if self.destroy == False:
-            if DEBUG == True:
-                print(self.name + ' DONE. Star detected.')
+        pass
 
     def verbose_detection(self, function, *args, **kwargs):
-        '''
-        Exec a detection step in verbose mode
-        '''
-        if self.destroy == False:
-            function(*args)
-            if self.destroy == True:
-                if DEBUG == True:
-                    print(
-                        str(inspect.stack()[0][2:4][::-1]) + str(function) + kwargs['errormsg'])
 
-    def from_catalog(self, CatalogLine, filter):
+        if not self.invalid:
+            function(*args)
+            if self.invalid:
+                pass
+
+    def magnitude_on_image(self, image_info):
+        ''' Set the magnitude and color (#-V) that match image filter.'''
+        if image_info.used_filter == "Johnson_U":
+            self.FilterMag = self.Umag
+            self.Color = self.U_V
+        elif image_info.used_filter == "Johnson_B":
+            self.FilterMag = self.Bmag
+            self.Color = self.B_V
+        elif image_info.used_filter == "Johnson_V":
+            self.FilterMag = self.Vmag
+            self.Color = 0.0
+        elif image_info.used_filter == "Johnson_R":
+            self.FilterMag = self.Rmag
+            self.Color = self.R_V
+        elif image_info.used_filter == "Johnson_I":
+            self.FilterMag = self.Imag
+            self.Color = self.I_V
+        else:
+            self.invalid = True
+
+        try:
+            assert(self.FilterMag < image_info.max_magnitude)
+        except:
+            self.invalid = True
+
+    def from_tuple(self, record, filter):
         ''' Populate class with properties extracted from catalog:
             recno, HDcode, RA1950, DEC1950, Vmag, U_V, B_V, R_V, I_V '''
 
@@ -182,7 +207,7 @@ class Star(object):
             '''
             Flag the star for its photometry usefulness.
             It must have a complete photometric magnitudes
-            and not to be double, variable or with 
+            and not to be double, variable or with
             [manual flag] bad photometric properties
             '''
 
@@ -204,80 +229,77 @@ class Star(object):
                 self.PhotometricStandard = False
 
         self.IncompletePhot = False
+
+        self.recno = record[0]
+        self.HDcode = record[1].replace(' ', '')
+        self.RA2000 = coord_pyephem_format(record[2])
+        self.DEC2000 = coord_pyephem_format(record[3])
+        self.RA1950 = coord_pyephem_format(record[4])
+        self.DEC1950 = coord_pyephem_format(record[5])
+        self.Vmag = record[6]
+
+        if (filter == "Johnson_U"):
+            self.U_V = get_float(record[7])
+        else:
+            self.U_V = 0
+        self.B_V = get_float(record[8])
+        if (filter == "Johnson_R"):
+            self.R_V = get_float(record[9])
+        else:
+            self.R_V = 0
+        if (filter == "Johnson_I"):
+            self.I_V = get_float(record[10])
+        else:
+            self.I_V = 0
+        self.isDouble = str(record[11]).replace(' ', '') == "D"
+        self.isVariab = str(record[12]).replace(' ', '') == "V"
+        self.r_SpTy = str(record[13]).replace(' ', '')
+        self.SpType = str(record[14]).replace(' ', '')
+        self.isBadPhot = str(record[15]).replace(' ', '') == "*"
+
         try:
-            self.recno = int(CatalogLine[0])
-            self.HDcode = str(CatalogLine[1]).replace(' ', '')
-            self.RA2000 = coord_pyephem_format(CatalogLine[2])
-            self.DEC2000 = coord_pyephem_format(CatalogLine[3])
-            self.RA1950 = coord_pyephem_format(CatalogLine[4])
-            self.DEC1950 = coord_pyephem_format(CatalogLine[5])
-            self.Vmag = get_float(CatalogLine[6])
-            if (filter == "Johnson_U"):
-                self.U_V = get_float(CatalogLine[7])
-            else:
-                self.U_V = 0
-            self.B_V = get_float(CatalogLine[8])
-            if (filter == "Johnson_R"):
-                self.R_V = get_float(CatalogLine[9])
-            else:
-                self.R_V = 0
-            if (filter == "Johnson_I"):
-                self.I_V = get_float(CatalogLine[10])
-            else:
-                self.I_V = 0
-            self.isDouble = str(CatalogLine[11]).replace(' ', '') == "D"
-            self.isVariab = str(CatalogLine[12]).replace(' ', '') == "V"
-            self.r_SpTy = str(CatalogLine[13]).replace(' ', '')
-            self.SpType = str(CatalogLine[14]).replace(' ', '')
-            self.isBadPhot = str(CatalogLine[15]).replace(' ', '') == "*"
-
-            try:
-                # Try to find the common name
-                self.name = str(CatalogLine[16])
-            except:
-                # Use the HDcode as name
-                self.name = self.HDcode
-
-            #self.name = self.HDcode
-
-            star_is_photometric(self)
-
-            self.Umag = self.Vmag + self.U_V
-            self.Bmag = self.Vmag + self.B_V
-            self.Rmag = self.Vmag + self.R_V
-            self.Imag = self.Vmag + self.I_V
+            # Try to find the common name
+            self.name = record[16]
         except:
-            self.destroy = True
+            # Use the HDcode as name
+            self.name = self.HDcode
 
-    def magnitude_on_image(self, ImageInfo):
+        star_is_photometric(self)
+
+        self.Umag = self.Vmag + self.U_V
+        self.Bmag = self.Vmag + self.B_V
+        self.Rmag = self.Vmag + self.R_V
+        self.Imag = self.Vmag + self.I_V
+
+    def magnitude_on_image(self, image_info):
         ''' Set the magnitude and color (#-V) that match image filter.'''
-        if ImageInfo.used_filter == "Johnson_U":
+        if image_info.used_filter == "Johnson_U":
             self.FilterMag = self.Umag
             self.Color = self.U_V
-        elif ImageInfo.used_filter == "Johnson_B":
+        elif image_info.used_filter == "Johnson_B":
             self.FilterMag = self.Bmag
             self.Color = self.B_V
-        elif ImageInfo.used_filter == "Johnson_V":
+        elif image_info.used_filter == "Johnson_V":
             self.FilterMag = self.Vmag
             self.Color = 0.0
-        elif ImageInfo.used_filter == "Johnson_R":
+        elif image_info.used_filter == "Johnson_R":
             self.FilterMag = self.Rmag
             self.Color = self.R_V
-        elif ImageInfo.used_filter == "Johnson_I":
+        elif image_info.used_filter == "Johnson_I":
             self.FilterMag = self.Imag
             self.Color = self.I_V
         else:
-            self.destroy = True
+            self.invalid = True
 
         try:
-            assert(self.FilterMag < ImageInfo.max_magnitude)
+            assert(self.FilterMag < image_info.max_magnitude)
         except:
-            self.destroy = True
+            self.invalid = True
 
-    def star_astrometry_sky(self, ImageInfo):
+    def star_astrometry_sky(self, image_info):
         ''' Perform astrometry. Returns (if star is visible and well defined) its position on the sky and image'''
 
-        ObsPyephem = pyephem_setup_real(ImageInfo)
+        ObsPyephem = pyephem_setup_real(image_info)
 
         def pyephem_declaration(self, ObsPyephem):
             ''' Define the star in Pyephem to make astrometric calculations '''
@@ -290,69 +312,69 @@ class Star(object):
         try:
             pyephem_star = pyephem_declaration(self, ObsPyephem)
         except:
-            self.destroy = True
+            self.invalid = True
 
-        if self.destroy == False:
+        if self.invalid == False:
             # The catalog is defined for B1950, get the current coordinates
             self.ra = float(pyephem_star.a_ra) * 12. / np.pi
             self.dec = float(pyephem_star.a_dec) * 180. / np.pi
 
             # Get the horizontal coordinates
             self.azimuth, self.altit_real = eq2horiz(
-                self.ra, self.dec, ImageInfo)
+                self.ra, self.dec, image_info)
 
             try:
-                assert(self.altit_real) > float(ImageInfo.min_altitude)
+                assert(self.altit_real) > float(image_info.min_altitude)
             except:
-                self.destroy = True
+                self.invalid = True
             else:
                 self.zdist_real = 90.0 - self.altit_real
 
-        if self.destroy == False:
+        if self.invalid == False:
             # Apparent coordinates in sky. Atmospheric refraction effect.
             self.altit_appa = atmospheric_refraction(self.altit_real, 'dir')
             try:
-                assert(self.altit_appa) > float(ImageInfo.min_altitude)
+                assert(self.altit_appa) > float(image_info.min_altitude)
             except:
-                self.destroy = True
+                self.invalid = True
             else:
                 self.zdist_appa = 90.0 - self.altit_appa
                 self.airmass = calculate_airmass(self.altit_appa)
 
-    def star_astrometry_image(self, ImageInfo):
-        if self.destroy == False:
+    def star_astrometry_image(self, image_info):
+        if self.invalid == False:
             # Get the X,Y image coordinates
-            XYCoordinates = horiz2xy(self.azimuth, self.altit_appa, ImageInfo)
+            XYCoordinates = horiz2xy(self.azimuth, self.altit_appa, image_info)
             self.Xcoord = XYCoordinates[0]
             self.Ycoord = XYCoordinates[1]
             try:
                 assert(
-                    self.Xcoord > 0. and self.Xcoord < ImageInfo.resolution[0])
+                    self.Xcoord > 0. and self.Xcoord < image_info.resolution[0])
                 assert(
-                    self.Ycoord > 0. and self.Ycoord < ImageInfo.resolution[1])
+                    self.Ycoord > 0. and self.Ycoord < image_info.resolution[1])
             except:
-                self.destroy = True
+                self.invalid = True
 
-    def photometric_radius(self, ImageInfo):
-        ''' Needs astrometry properties, photometric filter properties and ImageInfo
+    def photometric_radius(self, image_info):
+        ''' Needs astrometry properties, photometric filter properties and image_info
             Returns R1,R2 and R3 '''
         try:
-            '''Returns R1,R2,R3. Needs photometric properties and astrometry.'''
+            # Returns R1,R2,R3. Needs photometric properties and astrometry.
             MF_magn = 10 ** (-0.4 * self.FilterMag)
-            MF_reso = 0.5 * (min(ImageInfo.resolution) / 2500)
+            MF_reso = 0.5 * (min(image_info.resolution) / 2500)
             MF_airm = 0.7 * self.airmass
-            if (ImageInfo.latitude >= 0):
-                MF_decl = 0.2 * ImageInfo.exposure * abs(1. - self.dec / 90.)
+            if (image_info.latitude >= 0):
+                MF_decl = 0.2 * image_info.exposure * abs(1. - self.dec / 90.)
             else:
-                MF_decl = 0.2 * ImageInfo.exposure * abs(1. + self.dec / 90.)
+                MF_decl = 0.2 * image_info.exposure * abs(1. + self.dec / 90.)
 
             MF_totl = 1 + MF_magn + MF_reso + MF_decl + MF_airm
 
-            self.R1 = int(ImageInfo.base_radius * MF_totl)
+            self.R1 = int(image_info.base_radius * MF_totl)
             self.R2 = self.R1 * 1.5 + 1
             self.R3 = self.R1 * 3.0 + 3
         except:
-            self.destroy = True
+            self.invalid = True
 
     def estimate_fits_region_star(self, FitsImage):
         ''' Return the region that contains the star 
@@ -470,11 +492,10 @@ class Star(object):
             self.lima_sig = np.sqrt(2 * (
                 on_flux * np.log((1. + alpha) / (alpha) * (1. * on_flux / (on_flux + off_flux))) +
                 off_flux * np.log((1. + alpha) * (1. * off_flux / (on_flux + off_flux)))))
-            if (DEBUG == True):
-                print("alpha = %.3f, Li&Ma significance = %.2f" %
-                      (alpha, self.lima_sig))
+
+            #print("alpha = %.3f, Li&Ma significance = %.2f" % (alpha, self.lima_sig))
         except:
-            self.destroy = True
+            self.invalid = True
 
     def star_region_is_masked(self, FitsImage):
         ''' Check if the star is in the star mask'''
@@ -483,15 +504,15 @@ class Star(object):
             for y in xrange(int(self.Ycoord - self.R1 + 0.5), int(self.Ycoord + self.R1 + 0.5)):
                 if FitsImage.star_mask[y][x] == True:
                     self.masked = True
-                    self.destroy = True
+                    self.invalid = True
                     return(0)
 
-    def star_is_saturated(self, ImageInfo):
+    def star_is_saturated(self, image_info):
         ''' Return true if star has one or more saturated pixels 
             requires a defined self.fits_region_star'''
         try:
             assert(np.max(self.fits_region_star_uncalibrated)
-                   < 0.9 * 2 ** ImageInfo.ccd_bits)
+                   < 0.9 * 2 ** image_info.ccd_bits)
         except:
             # self.destroy=True
             self.PhotometricStandard = False
@@ -499,7 +520,7 @@ class Star(object):
         else:
             self.saturated = False
 
-    def star_has_cold_pixels(self, ImageInfo):
+    def star_has_cold_pixels(self, image_info):
         ''' Return true if star has one or more cold (0 value) pixels 
             requires a defined self.fits_region_star'''
         try:
@@ -513,18 +534,18 @@ class Star(object):
         else:
             self.cold_pixels = False
 
-    def star_is_detectable(self, ImageInfo):
+    def star_is_detectable(self, image_info):
         ''' Set a detection limit to remove weak stars'''
         ''' Check if star is detectable '''
 
         try:
             assert(self.starflux > 0)
             assert(self.lima_sig > 0)
-            assert(self.lima_sig > ImageInfo.baseflux_detectable)
+            assert(self.lima_sig > image_info.baseflux_detectable)
             # assert(self.starflux>\
-            # ImageInfo.baseflux_detectable*self.starflux_err+1e-10)
+            # image_info.baseflux_detectable*self.starflux_err+1e-10)
         except:
-            self.destroy = True
+            self.invalid = True
 
     def estimate_centroid(self):
         ''' Returns star centroid from a region that contains the star
@@ -542,16 +563,16 @@ class Star(object):
             self.Ycoord += (np.dot(np.dot(x, data), y1)) / \
                 (np.dot(np.dot(x1, data), y1)) - h / 2.
         except:
-            self.destroy = True
+            self.invalid = True
 
-    def optimal_aperture_photometry(self, ImageInfo, fits_data):
+    def optimal_aperture_photometry(self, image_info, fits_data):
         '''
         Optimize the aperture to minimize uncertainties and assert
         all flux is contained in R1
         '''
 
         try:
-            radius = (ImageInfo.base_radius + self.R1) / 2.
+            radius = (image_info.base_radius + self.R1) / 2.
             iterate = True
             num_iterations = 0
 
@@ -568,16 +589,16 @@ class Star(object):
 
                 assert(radius < self.R2)
         except:
-            self.destroy = True
+            self.invalid = True
 
-    def photometry_bouguervar(self, ImageInfo):
+    def photometry_bouguervar(self, image_info):
         # Calculate parameters used in bouguer law fit
         try:
-            _25logF = 2.5 * np.log10(self.starflux / ImageInfo.exposure)
+            _25logF = 2.5 * np.log10(self.starflux / image_info.exposure)
             _25logF_unc = (2.5 / np.log(10)) * \
                 self.starflux_err / self.starflux
-            color_term = ImageInfo.color_terms[ImageInfo.used_filter][0]
-            color_term_err = ImageInfo.color_terms[ImageInfo.used_filter][1]
+            color_term = image_info.color_terms[image_info.used_filter][0]
+            color_term_err = image_info.color_terms[image_info.used_filter][1]
             self.m25logF = self.FilterMag + _25logF + color_term * self.Color
             self.m25logF_unc = np.sqrt(
                 _25logF_unc ** 2 + (color_term_err * self.Color) ** 2)
@@ -603,103 +624,71 @@ class Star(object):
                 del vars(self)[atribute]
 
 
-class StarCatalog():
+class StarCatalog(object):
 
     ''' This class processes the catalog.
-        Takes FitsImage,ImageInfo,ObsPyephem, returns an object with 
+        Takes FitsImage,image_info,ObsPyephem, returns an object with 
         the processed Star list'''
 
-    def __init__(self, ImageInfo):
+    def __init__(self, image_info):
         print('Creating Star Catalog ...')
-        self.load_catalog_file(ImageInfo.catalog_filename)
+
+
+        catalogrec = numpy.recfromcsv('catalog.txt', delimiter=';', skiprows=0)
+        self.stars_tot = []
         print('Star processing ...')
-        self.process_catalog_general(ImageInfo)
-        # self.save_to_file(ImageInfo)
+        self.process_catalog_general('', catalogrec, image_info)
+        # self.save_to_file(image_info)
 
-    def load_catalog_file(self, catalog_filename):
-        ''' Returns Catalog lines from the catalog_filename '''
-
-        def line_is_star(textline, sep=';'):
-            theline = textline.split(sep)
-            try:
-                int(theline[0].replace(' ', '')[0])
-            except:
-                return(False)
-            else:
-                return(True)
-
-        def catalog_separation(textline, sep=';'):
-            theline = textline
-            theline = theline.replace('\r\n', '')
-            theline = theline.replace('\n', '')
-            theline = theline.split(sep)
-            return(theline)
-
-        try:
-            self.catalogfile = open(catalog_filename, 'r')
-            CatalogContent = self.catalogfile.readlines()
-            MinLine = 1
-            separator = ";"
-            self.CatalogLines = [catalog_separation(CatalogContent[line])
-                                 for line in xrange(len(CatalogContent))
-                                 if line >= MinLine - 1 and line_is_star(CatalogContent[line])]
-        except IOError:
-            print('IOError. Error opening file ' + catalog_filename + '.')
-            # return 1
-        except:
-            print('Unknown error:')
-            raise
-            # return 2
-        else:
-            print('File ' + str(catalog_filename) + ' opened correctly.')
-
-    def process_catalog_general(self, ImageInfo):
-        '''
+    def process_catalog_general(self, catalog_lines, catalogrec, image_info):
+        """
         Returns the processed catalog with 
         all the starts that should be visible.
-        '''
+        """
 
-        try:
-            ImageInfo.max_star_number
-        except:
-            ImageInfo.max_star_number = len(self.CatalogLines)
+        if not hasattr(image_info, "max_star_number"):
+            image_info.max_star_number = len(catalog_lines)
+            print 'Using default for ', image_info.max_star_number
 
-        self.StarList_Tot = []
-        for each_star in self.CatalogLines[0:ImageInfo.max_star_number]:
-            TheStar = Star(each_star, ImageInfo)
-            if (TheStar.destroy == False):
-                self.StarList_Tot.append(TheStar)
+        self.stars_tot = []
 
-        print(" - Total stars: %d" % len(self.StarList_Tot))
+        for each_rec in catalogrec[:image_info.max_star_number]:
 
-    def process_catalog_specific(self, FitsImage, ImageInfo):
+            the_star = Star(each_rec, image_info)
+            if not the_star.invalid:
+                self.stars_tot.append(the_star)
+
+        print(" - Total stars: %d" % len(self.stars_tot))
+
+    def process_catalog_specific(self, fits_image, image_info):
         '''
         Returns the processed catalog with 
         all the starts that are detected.
         '''
 
         # Create the masked star matrix
-        FitsImage.star_mask = np.zeros(
-            np.array(FitsImage.fits_data).shape, dtype=bool)
+        fits_image.star_mask = np.zeros(
+            np.array(fits_image.fits_data).shape, dtype=bool)
 
         self.StarList_Det = []
         self.StarList_Phot = []
-        for TheStar in self.StarList_Tot:
-            TheStar.camera_dependent_astrometry(FitsImage, ImageInfo)
-            TheStar.camera_dependent_photometry(FitsImage, ImageInfo)
-            TheStar.check_star_issues(FitsImage, ImageInfo)
-            TheStar.clear_objects()
-            if (TheStar.destroy == False):
-                self.StarList_Det.append(TheStar)
-                if TheStar.PhotometricStandard == True:
-                    self.StarList_Phot.append(TheStar)
+        for this_star in self.stars_tot:
+            this_star.camera_dependent_astrometry(fits_image, image_info)
+            this_star.camera_dependent_photometry(fits_image, image_info)
+            this_star.check_star_issues(fits_image, image_info)
+            this_star.clear_objects() #?
+
+            if not this_star.invalid:
+                self.StarList_Det.append(this_star)
+                if this_star.PhotometricStandard:
+                    self.StarList_Phot.append(this_star)
 
         print(" - Detected stars: %d" % len(self.StarList_Det))
         print(" - With photometry: %d" % len(self.StarList_Phot))
 
-    def save_to_file(self, ImageInfo):
+    def save_to_file(self, image_info):
         try:
-            assert(ImageInfo.photometry_table_path not in [
+            assert(image_info.photometry_table_path not in [
                    False, "False", "false", "F"])
         except:
             print('Skipping write photometric table to file')
@@ -716,12 +705,12 @@ class StarCatalog():
                                ', ' + str(Star.starflux) + ', ' + str(Star.starflux_err) + ', ' + str(Star.m25logF) +
                                ', ' + str(Star.m25logF_unc) + '\n')
 
-            if (ImageInfo.photometry_table_path == "screen"):
+            if (image_info.photometry_table_path == "screen"):
                 print(content)
             else:
                 phottable_filename = str("%s/PhotTable_%s_%s_%s.txt" % (
-                    ImageInfo.photometry_table_path, ImageInfo.obs_name,
-                    ImageInfo.fits_date, ImageInfo.used_filter))
+                    image_info.photometry_table_path, image_info.obs_name,
+                    image_info.fits_date, image_info.used_filter))
                 photfile = open(phottable_filename, 'w+')
                 photfile.writelines(content)
                 photfile.close()

@@ -167,33 +167,27 @@ class FitsImage(ImageTest):
         # Subtract background / bias (measure it in the non-illuminated corners
         # of the image).
         if self.subtract_corners_background and image_info is not None:
-            pass
-        else:
             print ('Other correction')
             image_coordinates = ImageCoordinates(image_info)
             data_corners = self.fits_data[image_coordinates.altitude_map < -20]
-            self.bias_image_median = np.median(data_corners)
-            self.bias_image_std = np.std(data_corners)
-            self.bias_image_err = self.bias_image_std / \
-                np.sqrt(np.size(data_corners))
-            self.fits_data = self.fits_data - self.bias_image_median
-            print("Removed: %.2f +/- %.2f counts from measured background"
-                  % (self.bias_image_median, self.bias_image_err))
+            bias_image_median = np.median(data_corners)
+            bias_image_std = np.std(data_corners)
+            bias_image_err = bias_image_std / np.sqrt(np.size(data_corners))
+            self.fits_data = self.fits_data - bias_image_median
+            print("Removed: {:.2f} +/- {:.2f} counts from measured background".format(bias_image_median, bias_image_err))
 
+            # We are logging something here?
             if hasattr(image_info, 'summary_path') and \
                             image_info.summary_path not in [False, "False", "false", "F", "screen"]:
                 if not os.path.exists(image_info.summary_path):
                     os.makedirs(image_info.summary_path)
-                measured_bias_log = open(
-                    image_info.summary_path + '/measured_image_bias.txt', 'a+')
-                text_to_log = str(image_info.date_string) + ',' + str(image_info.used_filter) + ',' +\
-                    str(self.bias_image_median) + ',' + \
-                    str(self.bias_image_err) + '\r\n'
-                measured_bias_log.write(text_to_log)
-                measured_bias_log.close()
+                with open(image_info.summary_path + '/measured_image_bias.txt', 'a+') as measured_bias_log:
+                    text_to_log = "{0.date_string},{0.used_filter},{1},{2}"
+                    measured_bias_log.write(text_to_log.format(image_info, bias_image_median, bias_image_err))
 
         # Flat field correction
         if not skip_flat:
+            print("Not skip flat")
             self.fits_data = self.flat_field_correction(self.fits_data, mflatdata)
 
         print('OK')

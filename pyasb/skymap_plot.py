@@ -27,60 +27,53 @@ class SkyMap(object):
         # Set image_info as local sub-object, we will use
         # it a lot.
         self.image_info = image_info
-
-        if False:#not self.image_info.skymap_path:
-            # Don't draw anything
-            print('Skipping Skymap Graph ...')
-        else:
-            print('Star Map plot ...')
-            self.stretch_data(
-                fits_image.fits_data_notcalibrated,
-                image_info.perc_low,
-                image_info.perc_high)
-            # self.setup_skymap()
-            # self.draw_catalog_stars()
-            # self.draw_detected_stars()
-            # self.astrometry_solver()
-            # self.draw_polar_axes()
-            # self.show_figure()
+        self.star_catalog = None # Empy constructor better?
+        self.stretch_data(
+            fits_image.fits_data_notcalibrated,
+            image_info.perc_low,
+            image_info.perc_high)
+        # self.setup_skymap()
+        # self.draw_catalog_stars()
+        # self.draw_detected_stars()
+        # self.astrometry_solver()
+        # self.draw_polar_axes()
+        # self.show_figure()
 
     def setup_skymap(self):
-        '''
+        """
         To be executed at the beginning (no stars)
-        '''
-        if True:
-            self.define_skymap()
-            self.draw_skymap_data()
-            self.skyfigure.canvas.draw()
-            self.skyfigure.canvas.flush_events()
+        """
 
-            #if (self.image_info.skymap_path == "screen"):
-            plt.show(block=False)
+        self.define_skymap()
+        self.draw_skymap_data()
+        self.skyfigure.canvas.draw()
+        self.skyfigure.canvas.flush_events()
+
+        plt.show(block=False)
 
     def complete_skymap(self):
-        ''' 
+        """
         To be executed when an astrometric solution is found
-        '''
-        if True:
-            self.draw_catalog_stars()
-            self.draw_detected_stars()
-            self.draw_polar_axes()
-            self.skyfigure.canvas.draw()
-            self.skyfigure.canvas.flush_events()
-            self.show_figure()
+        """
+        self.draw_catalog_stars()
+        self.draw_detected_stars()
+        self.draw_polar_axes()
+        self.skyfigure.canvas.draw()
+        self.skyfigure.canvas.flush_events()
+        self.show_figure()
 
-    def set_starcatalog(self, StarCatalog):
-        self.StarCatalog = StarCatalog
+    def set_starcatalog(self, star_catalog):
+        self.star_catalog = star_catalog
 
     def draw_catalog_stars(self):
-        for Star in self.StarCatalog.StarList_Tot:
-            self.draw_annotate_star(Star, type=0)
+        for star in self.star_catalog.stars_tot:
+            self.draw_annotate_star(star, type=0)
 
     def draw_detected_stars(self):
-        for Star in self.StarCatalog.StarList_Det:
-            self.draw_annotate_star(Star, type=1)
-        for Star in self.StarCatalog.StarList_Phot:
-            self.draw_annotate_star(Star, type=2)
+        for star in self.star_catalog.StarList_Det:
+            self.draw_annotate_star(star, type=1)
+        for star in self.star_catalog.StarList_Phot:
+            self.draw_annotate_star(star, type=2)
 
     def stretch_data(self, fits_data, pmin, pmax):
         #log_fits_data = np.log(fits_data-np.min(fits_data)+1,dtype="float32")
@@ -91,13 +84,13 @@ class SkyMap(object):
         self.stretched_fits_data = log_fits_data.clip(valuemin, valuemax)
 
     def define_skymap(self):
-        ''' Create figure and self.skyimage subplot. '''
+        """Create figure and self.skyimage subplot."""
         self.skyfigure = plt.figure(figsize=(8, 8))
         self.skyimage = self.skyfigure.add_subplot(111)
         self.skyfigure.canvas.draw()  # (block=False)
 
     def mouse_press_callback(self, event):
-        ''' Coordinate input '''
+        """Coordinate input """
         if event.button == 3:
             ix, iy = event.xdata, event.ydata
             print('x = %d, y = %d' % (ix, iy))
@@ -113,9 +106,9 @@ class SkyMap(object):
                     xycoords='data', xytext=(0, 3),
                     textcoords='offset points', fontsize=8, alpha=0.8))
 
-            self.name = self.StarCatalog.StarList_Tot[self.star_index].name
-            self.azim = self.StarCatalog.StarList_Tot[self.star_index].azimuth
-            self.alti = self.StarCatalog.StarList_Tot[
+            self.name = self.star_catalog.stars_tot[self.star_index].name
+            self.azim = self.star_catalog.stars_tot[self.star_index].azimuth
+            self.alti = self.star_catalog.stars_tot[
                 self.star_index].altit_real
             px, py = horiz2xy(
                 self.azim, self.alti, self.image_info, derotate=True)
@@ -143,9 +136,9 @@ class SkyMap(object):
         if event.key == 'n':
             print('Next star')
             self.star_index += 1
-            self.name = self.StarCatalog.StarList_Tot[self.star_index].name
-            self.azim = self.StarCatalog.StarList_Tot[self.star_index].azimuth
-            self.alti = self.StarCatalog.StarList_Tot[
+            self.name = self.star_catalog.stars_tot[self.star_index].name
+            self.azim = self.star_catalog.stars_tot[self.star_index].azimuth
+            self.alti = self.star_catalog.stars_tot[
                 self.star_index].altit_real
             px, py = horiz2xy(
                 self.azim, self.alti, self.image_info, derotate=True)
@@ -164,9 +157,9 @@ class SkyMap(object):
             self.label_stars.pop()
             self.identified_stars.pop()
             self.star_index -= 1
-            self.name = self.StarCatalog.StarList_Tot[self.star_index].name
-            self.azim = self.StarCatalog.StarList_Tot[self.star_index].azimuth
-            self.alti = self.StarCatalog.StarList_Tot[
+            self.name = self.star_catalog.stars_tot[self.star_index].name
+            self.azim = self.star_catalog.stars_tot[self.star_index].azimuth
+            self.alti = self.star_catalog.stars_tot[
                 self.star_index].altit_real
             px, py = horiz2xy(
                 self.azim, self.alti, self.image_info, derotate=True)
@@ -237,7 +230,7 @@ class SkyMap(object):
 
     def astrometry_solver(self):
         print(
-            '*** Star select tool. Press right-click to begin. *** \n' +
+            '*** star select tool. Press right-click to begin. *** \n' +
             'Right-click: assign star coords. \n' +
             'n:           next star (skip current). \n' +
             'p:           previous star (remove last entry). \n' +
@@ -253,17 +246,17 @@ class SkyMap(object):
         try:
             assert(self.image_info.latitude > 0)
             polaris_index = [
-                Star.HDcode for Star in self.StarCatalog.StarList_Tot].index("HD8890")
-            AuxStar = self.StarCatalog.StarList_Tot[polaris_index]
-            self.StarCatalog.StarList_Tot[
-                polaris_index] = self.StarCatalog.StarList_Tot[0]
-            self.StarCatalog.StarList_Tot[0] = AuxStar
+                star.HDcode for star in self.star_catalog.stars_tot].index("HD8890")
+            AuxStar = self.star_catalog.stars_tot[polaris_index]
+            self.star_catalog.stars_tot[
+                polaris_index] = self.star_catalog.stars_tot[0]
+            self.star_catalog.stars_tot[0] = AuxStar
         except:
             pass
 
-        self.name = self.StarCatalog.StarList_Tot[0].name
-        self.azim = self.StarCatalog.StarList_Tot[0].azimuth
-        self.alti = self.StarCatalog.StarList_Tot[0].altit_real
+        self.name = self.star_catalog.stars_tot[0].name
+        self.azim = self.star_catalog.stars_tot[0].azimuth
+        self.alti = self.star_catalog.stars_tot[0].altit_real
         print('Name: %s, Az: %s, Alt: %s' % (self.name, self.azim, self.alti))
 
         self.cid_mouse = self.skyfigure.canvas.mpl_connect(

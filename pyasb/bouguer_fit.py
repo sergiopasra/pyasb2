@@ -26,32 +26,25 @@ import pyasb.astrometry
 
 class BouguerFit(object):
 
-    def __init__(self, ImageInfo, PhotometricCatalog):
+    def __init__(self, image_info, PhotometricCatalog):
         print('Calculating Instrument zeropoint and extinction ...')
-        self.can_continue = False
-        # Get Zero Point from ImageInfo and Stars from the Catalog
-        self.bouguer_fixedy(ImageInfo)
+
+
+        # Get Zero Point from image_info and Stars from the Catalog
+        self.bouguer_fixedy(image_info)
         self.bouguer_data(PhotometricCatalog)
         # Set the default values
-        self.bouguer_setdefaults(ImageInfo)
+        self.bouguer_setdefaults(image_info)
         # Try to fit the data
-        try:
-            self.bouguer_fit(ImageInfo)
-            self.bouguer_plot(ImageInfo)
-        except:
-            print(str(inspect.stack()[0][2:4][::-1]) +
-                  ' cannot fit the data. Npoints=' + str(len(self.ydata)))
-            assert(self.can_continue == True)
-            raise
-        else:
-            self.can_continue = True
 
-        assert(self.can_continue == True)
+        self.bouguer_fit(image_info)
+        self.bouguer_plot(image_info)
+
         print("Bouguer extinction fit results: \n" +
               " -> C=%.3f+/-%.3f, K=%.3f+/-%.3f, r=%.3f"
-              % (self.Regression.mean_zeropoint, self.Regression.error_zeropoint,
-                 self.Regression.extinction, self.Regression.error_extinction,
-                 self.Regression.kendall_tau))
+              % (self.regression.mean_zeropoint, self.regression.error_zeropoint,
+                 self.regression.extinction, self.regression.error_extinction,
+                 self.regression.kendall_tau))
 
     def bouguer_data(self, StarCatalog):
         ''' Get Star data from the catalog '''
@@ -62,22 +55,20 @@ class BouguerFit(object):
         self.yerr = np.array([Star.m25logF_unc
                               for Star in StarCatalog.StarList_Phot])
 
-    def bouguer_fixedy(self, ImageInfo):
+    def bouguer_fixedy(self, image_info):
         ''' Try to get the fixed Y (zero point)'''
         try:
-            self.fixed_y = ImageInfo.used_zero_point[0]
-            self.fixed_y_unc = ImageInfo.used_zero_point[1]
+            self.fixed_y = image_info.used_zero_point[0]
+            self.fixed_y_unc = image_info.used_zero_point[1]
             self.yisfixed = True
         except:
-            if DEBUG == True:
-                print(
-                    str(inspect.stack()[0][2:4][::-1]) + ' dont fix the Zero Point')
+            print(' dont fix the Zero Point')
             self.yisfixed = False
 
-    def bouguer_setdefaults(self, ImageInfo):
+    def bouguer_setdefaults(self, image_info):
         ''' Set default values (just in case that the bouguer fit fails '''
         if self.yisfixed == True:
-            class Regression:
+            class Regression(object):
                 mean_zeropoint = self.fixed_y
                 error_zeropoint = self.fixed_y_unc
                 mean_slope = 10.0
@@ -88,49 +79,48 @@ class BouguerFit(object):
                 Nstars_initial = 0
                 Nstars_final = 0
                 Nstars_rel = 0
-            self.Regression = Regression()
+
+            self.regression = Regression()
             self.can_continue = True
 
-    def bouguer_fit(self, ImageInfo):
+    def bouguer_fit(self, image_info):
         '''
         Fit measured fluxes to an extinction model
         Return regression parameters (ZeroPoint, Extinction)
         '''
 
         if self.yisfixed:
-            self.Regression = TheilSenRegression(
+            self.regression = TheilSenRegression(
                 Xpoints=self.xdata,
                 Ypoints=self.ydata,
-                ImageInfo=ImageInfo,
+                image_info=image_info,
                 y0=self.fixed_y,
                 y0err=self.fixed_y_unc)
         else:
-            try:
-                self.Regression = TheilSenRegression(
-                    Xpoints=self.xdata,
-                    Ypoints=self.ydata,
-                    ImageInfo=ImageInfo)
-            except:
-                print(inspect.stack()[0][2:4][::-1])
-                raise
+
+            self.regression = TheilSenRegression(
+                Xpoints=self.xdata,
+                Ypoints=self.ydata,
+                image_info=image_info)
+
 
         # Apply bad point filter to data
-        self.xdata = self.xdata[self.Regression.badfilter]
-        self.ydata = self.ydata[self.Regression.badfilter]
-        self.yerr = self.yerr[self.Regression.badfilter]
+        self.xdata = self.xdata[self.regression.badfilter]
+        self.ydata = self.ydata[self.regression.badfilter]
+        self.yerr = self.yerr[self.regression.badfilter]
 
-    def bouguer_plot(self, ImageInfo):
-        if ImageInfo.bouguerfit_path == False:
+    def bouguer_plot(self, image_info):
+        if image_info.bouguerfit_path == False:
             # Don't draw anything
             print('Skipping BouguerFit Graph')
             return(None)
 
-        ''' Plot photometric data from the bouguer fit '''
+        # Plot photometric data from the bouguer fit
 
         xfit = np.linspace(
-            1, pyasb.astrometry.calculate_airmass(ImageInfo.min_altitude), 10)
+            1, pyasb.astrometry.calculate_airmass(image_info.min_altitude), 10)
         yfit = np.polyval(
-            [self.Regression.mean_slope, self.Regression.mean_zeropoint], xfit)
+            [self.regression.mean_slope, self.regression.mean_zeropoint], xfit)
 
         bouguerfigure = plt.figure(figsize=(8, 6))
         bouguerplot = bouguerfigure.add_subplot(111)
@@ -141,30 +131,28 @@ class BouguerFit(object):
             self.xdata, self.ydata, yerr=self.yerr, fmt='*', ecolor='g')
         bouguerplot.plot(xfit, yfit, 'r-')
 
-        try:
-            plot_infotext = \
-                ImageInfo.date_string + "\n" + str(ImageInfo.latitude) + 5 * " " + str(ImageInfo.longitude) + "\n" +\
-                ImageInfo.used_filter + 4 * " " + "Rcorr=" + str("%.3f" % float(self.Regression.kendall_tau)) + "\n" +\
-                "C=" + str("%.3f" % float(self.Regression.mean_zeropoint)) +\
-                "+/-" + str("%.3f" % float(self.Regression.error_zeropoint)) + "\n" +\
-                "K=" + str("%.3f" % float(self.Regression.extinction)) + "+/-"\
-                + str("%.3f" % float(self.Regression.error_slope)) + "\n" +\
-                str("%.0f" % (self.Regression.Nstars_rel)) + "% of " +\
-                str(self.Regression.Nstars_initial) + \
-                " photometric measures shown"
-            bouguerplot.text(
-                0.05, 0.05, plot_infotext, fontsize='x-small', transform=bouguerplot.transAxes)
-        except:
-            print(inspect.stack()[0][2:4][::-1])
-            raise
+
+        plot_infotext = \
+            image_info.date_string + "\n" + str(image_info.latitude) + 5 * " " + str(image_info.longitude) + "\n" +\
+            image_info.used_filter + 4 * " " + "Rcorr=" + str("%.3f" % float(self.regression.kendall_tau)) + "\n" +\
+            "C=" + str("%.3f" % float(self.regression.mean_zeropoint)) +\
+            "+/-" + str("%.3f" % float(self.regression.error_zeropoint)) + "\n" +\
+            "K=" + str("%.3f" % float(self.regression.extinction)) + "+/-"\
+            + str("%.3f" % float(self.regression.error_slope)) + "\n" +\
+            str("%.0f" % (self.regression.Nstars_rel)) + "% of " +\
+            str(self.regression.Nstars_initial) + \
+            " photometric measures shown"
+        bouguerplot.text(
+            0.05, 0.05, plot_infotext, fontsize='x-small', transform=bouguerplot.transAxes)
+
 
         # Show or save the bouguer plot
-        if ImageInfo.bouguerfit_path == "screen":
+        if image_info.bouguerfit_path == "screen":
             plt.show()
         else:
             bouguer_filename = str("%s/BouguerFit_%s_%s_%s.png" % (
-                ImageInfo.bouguerfit_path, ImageInfo.obs_name,
-                ImageInfo.fits_date, ImageInfo.used_filter))
+                image_info.bouguerfit_path, image_info.obs_name,
+                image_info.fits_date, image_info.used_filter))
             plt.tight_layout(pad=0)
             plt.savefig(bouguer_filename, bbox_inches='tight')
 
@@ -175,7 +163,7 @@ class BouguerFit(object):
 class TheilSenRegression(object):
     # Robust Theil Sen estimator, instead of the classic least-squares.
 
-    def __init__(self, Xpoints, Ypoints, ImageInfo, y0=None, y0err=None, x0=None, x0err=None):
+    def __init__(self, Xpoints, Ypoints, image_info, y0=None, y0err=None, x0=None, x0err=None):
         assert(len(Xpoints) == len(Ypoints) and len(Ypoints) > 2)
         self.Xpoints = np.array(Xpoints)
         self.Ypoints = np.array(Ypoints)
@@ -202,7 +190,7 @@ class TheilSenRegression(object):
         # Perform the regression
         self.perform_regression()
         # Delete bad points
-        self.delete_bad_points(ImageInfo)
+        self.delete_bad_points(image_info)
         # Try to improve the regression with filtered data
         self.perform_regression()
 
@@ -273,11 +261,11 @@ class TheilSenRegression(object):
     def calculate_residuals(self):
         self.residuals = self.zeropoint_array - self.mean_zeropoint
 
-    def delete_bad_points(self, ImageInfo):
+    def delete_bad_points(self, image_info):
         # 3*std_residuals threshold
         std_residual = np.std(self.residuals)
         self.badfilter = np.abs(self.residuals) < np.abs(
-            ImageInfo.lim_Kendall_tau * std_residual)
+            image_info.lim_Kendall_tau * std_residual)
         self.Xpoints = self.Xpoints[self.badfilter]
         self.Ypoints = self.Ypoints[self.badfilter]
 
