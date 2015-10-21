@@ -4,7 +4,7 @@ from pyasb.info import __version__
 
 config_file_default = 'config.cfg'
 
-def main():
+def main(args=None):
 
     thisversion = '%(prog)s {}'.format(__version__)
 
@@ -48,8 +48,8 @@ def main():
                              'if no output file, show the graph on screen')
     parser.add_argument('--path',
                         help='save path')
-    args = parser.parse_args()
-    return args
+    resargs = parser.parse_args(args)
+    return resargs
 
 
 if __name__ == '__main__':
