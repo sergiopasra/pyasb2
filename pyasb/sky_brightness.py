@@ -148,7 +148,7 @@ class SkyBrightness(object):
             # If previous grid calculus, then extract from that grid
             self.SBzenith = np.median(self.SBgrid[self.ZDgrid == 0])
             self.SBzenith_err = np.max(self.SBgrid_errors[self.ZDgrid == 0])
-        except:
+        except AttributeError:
             # If not previous grid, calculate manually.
             zenith_acceptance = 10
             limits = {

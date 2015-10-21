@@ -52,7 +52,7 @@ class LoadImage(object):
                 self.image_info.sel_flatfield,
                 master_bias=None,
                 image_info=self.image_info)
-        except:
+        except StandardError:
             print('Cannot reduce science frame')
             raise
 
@@ -74,10 +74,10 @@ class LoadImage(object):
         for path in path_list:
             try:
                 setattr(self.image_info, path, getattr(InputOptions, path))
-            except:
+            except AttributeError:
                 try:
                     getattr(InputOptions, path)
-                except:
+                except AttributeError:
                     setattr(self.image_info, path, False)
 
 #@profile
@@ -178,7 +178,7 @@ def perform_complete_analysis(input_options, image_info_common,
         instrumentcalibration_ = InstrumentCalibration(
             image.image_info,
             ImageAnalysis_.StarCatalog)
-    except:
+    except StandardError:
         class ImageSkyBrightness:
             SBzenith = '-1'
             SBzenith_err = '-1'

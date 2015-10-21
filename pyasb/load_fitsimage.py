@@ -127,7 +127,7 @@ class FitsImage(ImageTest):
         try:
             mdark_hdul = self.load_dark(master_dark)
             mdarkdata = mdark_hdul[0].data
-        except:
+        except StandardError:
             # Try to use MasterDark as a fixed offset value
             try:
                 mdarkdata = float(master_dark)

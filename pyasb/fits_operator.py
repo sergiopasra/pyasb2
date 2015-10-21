@@ -23,7 +23,7 @@ def verbose(function, *args):
     '''
     try:
         out = function(*args)
-    except:
+    except StandardError:
         # Something happened while runing function
         raise
     else:

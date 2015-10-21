@@ -137,7 +137,7 @@ class Star(object):
         if self.to_be_masked == True:
             try:
                 self.append_to_star_mask(FitsImage)
-            except:
+            except StandardError:
                 print('Cannot add star to mask')
 
     def clear_objects(self):
@@ -195,9 +195,9 @@ class Star(object):
             '''
             try:
                 return(float(value))
-            except:
+            except ValueError:
                 self.IncompletePhot = True
-                return(0)
+                return 0
 
         def star_is_photometric(self):
             '''
@@ -253,12 +253,12 @@ class Star(object):
         self.SpType = str(record[14]).replace(' ', '')
         self.isBadPhot = str(record[15]).replace(' ', '') == "*"
 
-        try:
-            # Try to find the common name
-            self.name = record[16]
-        except:
-            # Use the HDcode as name
-            self.name = self.HDcode
+
+        # Try to find the common name
+        self.name = record[16]
+
+        # Use the HDcode as name
+        self.name = self.HDcode
 
         star_is_photometric(self)
 
@@ -305,7 +305,7 @@ class Star(object):
 
         try:
             pyephem_star = pyephem_declaration(self, ObsPyephem)
-        except:
+        except StandardError:
             self.invalid = True
 
         if self.invalid == False:
@@ -359,7 +359,7 @@ class Star(object):
             self.R1 = int(image_info.base_radius * MF_totl)
             self.R2 = self.R1 * 1.5 + 1
             self.R3 = self.R1 * 3.0 + 3
-        except:
+        except StandardError:
             self.invalid = True
 
     def estimate_fits_region_star(self, FitsImage):
@@ -480,7 +480,7 @@ class Star(object):
                 off_flux * np.log((1. + alpha) * (1. * off_flux / (on_flux + off_flux)))))
 
             #print("alpha = %.3f, Li&Ma significance = %.2f" % (alpha, self.lima_sig))
-        except:
+        except StandardError:
             self.invalid = True
 
     def star_region_is_masked(self, FitsImage):
@@ -538,7 +538,7 @@ class Star(object):
                 (np.dot(np.dot(x1, data), y1)) - w / 2.
             self.Ycoord += (np.dot(np.dot(x, data), y1)) / \
                 (np.dot(np.dot(x1, data), y1)) - h / 2.
-        except:
+        except StandardError:
             self.invalid = True
 
     def optimal_aperture_photometry(self, image_info, fits_data):
@@ -577,7 +577,7 @@ class Star(object):
             self.m25logF = self.FilterMag + _25logF + color_term * self.Color
             self.m25logF_unc = np.sqrt(
                 _25logF_unc ** 2 + (color_term_err * self.Color) ** 2)
-        except:
+        except StandardError:
             self.PhotometricStandard = False
             # self.destroy=True
 

@@ -113,10 +113,8 @@ class SkyMap(object):
             px, py = horiz2xy(
                 self.azim, self.alti, self.image_info, derotate=True)
 
-            try:
-                self.preliminary_star.remove()
-            except:
-                pass
+
+            self.preliminary_star.remove()
 
             self.preliminary_star = \
                 self.skyimage.scatter(

@@ -42,9 +42,7 @@ class ImageInfo(ImageTest):
         self.used_filter = ImageTest.correct_filter(fits_header)
 
         # Update radial factor guess
-        try:
-            self.radial_factor
-        except:
+        if not hasattr(self, 'radial_factor'):
             self.radial_factor = \
                 (np.min(self.resolution) / 2 - 10 * self.base_radius)\
                 / (180.0 * np.sqrt(2) / np.pi)

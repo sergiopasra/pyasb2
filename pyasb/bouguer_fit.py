@@ -57,13 +57,13 @@ class BouguerFit(object):
 
     def bouguer_fixedy(self, image_info):
         ''' Try to get the fixed Y (zero point)'''
-        try:
-            self.fixed_y = image_info.used_zero_point[0]
-            self.fixed_y_unc = image_info.used_zero_point[1]
-            self.yisfixed = True
-        except:
-            print(' dont fix the Zero Point')
-            self.yisfixed = False
+        #try:
+        self.fixed_y = image_info.used_zero_point[0]
+        self.fixed_y_unc = image_info.used_zero_point[1]
+        self.yisfixed = True
+        #except:
+        #    print(' dont fix the Zero Point')
+        #    self.yisfixed = False
 
     def bouguer_setdefaults(self, image_info):
         ''' Set default values (just in case that the bouguer fit fails '''
