@@ -164,7 +164,8 @@ class TheilSenRegression(object):
     # Robust Theil Sen estimator, instead of the classic least-squares.
 
     def __init__(self, Xpoints, Ypoints, image_info, y0=None, y0err=None, x0=None, x0err=None):
-        assert(len(Xpoints) == len(Ypoints) and len(Ypoints) > 2)
+        if (len(Xpoints) != len(Ypoints) or len(Ypoints) <= 2):
+            raise ValueError("len(Xpoints) != len(Ypoints) or len(Ypoints) > 2)")
         self.Xpoints = np.array(Xpoints)
         self.Ypoints = np.array(Ypoints)
         if y0 != None:

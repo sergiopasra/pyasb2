@@ -243,16 +243,13 @@ class SkyMap(object):
         self.completed = 0
 
         # For the northern hemisphere, put Polaris as the first star
-        try:
-            assert(self.image_info.latitude > 0)
+        if self.image_info.latitude > 0:
             polaris_index = [
                 star.HDcode for star in self.star_catalog.stars_tot].index("HD8890")
             AuxStar = self.star_catalog.stars_tot[polaris_index]
             self.star_catalog.stars_tot[
                 polaris_index] = self.star_catalog.stars_tot[0]
             self.star_catalog.stars_tot[0] = AuxStar
-        except:
-            pass
 
         self.name = self.star_catalog.stars_tot[0].name
         self.azim = self.star_catalog.stars_tot[0].azimuth

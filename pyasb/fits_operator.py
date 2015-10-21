@@ -32,21 +32,16 @@ def verbose(function, *args):
 
 def load_image(image):
     print('Loading Data and Header for the given Image ...'),
-    try:
-        Image_HDU = pyfits.open(image)
-        Image_Data = Image_HDU[0].data
-        Image_Header = Image_HDU[0].header
-        # Convert to string
-        #Image_Header_text = Image_Header.tostring()
-        #Image_Header_text = encode_utf8_to_iso88591(Image_Header_text)
-        # Image_Header.fromstring(Image_Header_text)
-        # print(Image_Header)
-    except:
-        print(inspect.stack()[0][2:4][::-1])
-        raise
-    else:
-        print('OK')
-        return(Image_Data, Image_Header)
+    Image_HDU = pyfits.open(image)
+    Image_Data = Image_HDU[0].data
+    Image_Header = Image_HDU[0].header
+    # Convert to string
+    #Image_Header_text = Image_Header.tostring()
+    #Image_Header_text = encode_utf8_to_iso88591(Image_Header_text)
+    # Image_Header.fromstring(Image_Header_text)
+    # print(Image_Header)
+    print('OK')
+    return(Image_Data, Image_Header)
 
 
 class FitsOperation(object):

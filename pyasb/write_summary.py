@@ -84,8 +84,6 @@ def save_summary_to_file(summary_content, image_info):
                 image_info.summary_path, image_info.obs_name,
                 image_info.fits_date, image_info.used_filter)
 
-            assert summary_filename == summary_filename1
-
             summaryfile = open(summary_filename, 'w+')
             summaryfile.writelines(content)
             summaryfile.close()

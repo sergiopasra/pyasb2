@@ -70,16 +70,10 @@ class CloudCoverage(object):
               % (self.mean_cloudcover, self.error_cloudcover))
 
         ''' If asked, calculate the cloud covering by sectors in the image '''
-        try:
-            assert(
+        if not (
                 Image.ImageInfo.clouddata_path != False or
-                Image.ImageInfo.cloudmap_path != False)
-        except Exception as e:
-            # print(inspect.stack()[0][2:4][::-1])
+                Image.ImageInfo.cloudmap_path != False):
             print('Skipping cloud coverage detection')
-            # print(type(e))
-            # print(e)
-            return(None)
         else:
             print('Measuring Cloud Covering ...')
             self.create_bins()
@@ -211,11 +205,8 @@ class CloudCoverage(object):
             self.CloudCoverage, PercentageStars, PredictedStars)
 
     def clouddata_table(self, ImageInfo):
-        try:
-            assert(ImageInfo.clouddata_path != False)
-        except:
+        if not (ImageInfo.clouddata_path != False):
             print('Skipping write clouddata table to file')
-            raise
         else:
             print('Write clouddata table to file')
             header = '#Altitude\Azimuth'
@@ -245,16 +236,13 @@ class CloudCoverage(object):
                 cloudfile.close()
 
     def cloud_map(self, BouguerFit, ImageInfo):
-        try:
-            assert(ImageInfo.cloudmap_path != False)
-        except:
-            print(inspect.stack()[0][2:4][::-1])
+        if not (ImageInfo.cloudmap_path != False):
             print('Skipping write cloudmap to file')
-            return(None)
-        else:
-            print('Output cloudmap')
+            return
 
-        ''' Create the cloud map '''
+        print('Output cloudmap')
+
+        # Create the cloud map '''
         self.Cloudfigure = plt.figure(figsize=(8, 7.5))
         self.Cloudgraph = self.Cloudfigure.add_subplot(111, projection='polar')
 

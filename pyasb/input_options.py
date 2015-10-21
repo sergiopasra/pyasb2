@@ -82,14 +82,10 @@ class ReadOptions(object):
             self.date_set = True
             self.inputfile_set = True
 
-            try:
-                assert(len(dates) >= 1)
-            except:
+            if len(dates) < 1:
                 self.date_set = False
 
-            try:
-                assert(len(self.fits_filename_list) >= 1)
-            except:
+            if len(self.fits_filename_list) < 1:
                 self.inputfile_set = False
 
             if not (self.date_set or self.inputfile_set):
@@ -141,10 +137,7 @@ class ReadOptions(object):
                 while(iterate == True):
                     list_files.append(self.input_options[2])
                     self.input_options.remove(self.input_options[2])
-                    try:
-                        assert(
-                            self.options.get(self.input_options[2], lambda: None)() == True)
-                    except:
+                    if not self.options.get(self.input_options[2], lambda: None)():
                         iterate = False
 
                 self.input_options.remove(self.input_options[1])

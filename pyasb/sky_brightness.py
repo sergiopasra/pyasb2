@@ -109,11 +109,8 @@ class SkyBrightness(object):
         self.AZgrid = self.AZgrid * np.pi / 180.
 
     def sbdata_table(self, ImageInfo):
-        try:
-            assert(ImageInfo.skybrightness_table_path != False)
-        except AssertionError:
+        if not ImageInfo.skybrightness_table_path:
             print('Skipping write skybrightness table to file')
-            raise
         else:
             print('Write skybrightness table to file')
 
