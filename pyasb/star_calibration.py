@@ -71,28 +71,19 @@ class Star(object):
         # Astrometry for the current star (sky)
         self.star_astrometry_sky(image_info)
 
-
-    def camera_dependent_astrometry(self, FitsImage, image_info):
+    def camera_dependent_astrometry(self, fits_image, image_info):
         # Astrometry for the current star (image)
-        self.verbose_detection(self.star_astrometry_image, image_info,
-                               errormsg=' Error performing star astrometry (image)')
+        self.star_astrometry_image(image_info)
         # Estimate radius to do the aperture photometry
-        self.verbose_detection(self.photometric_radius, image_info,
-                               errormsg=' Error generating photometric radius')
+        self.photometric_radius(image_info)
         # Create regions of stars and star+background
-        self.verbose_detection(self.estimate_fits_region_star, FitsImage,
-                               errormsg=' Cannot create the Star region')
-        self.verbose_detection(self.estimate_fits_region_complete, FitsImage,
-                               errormsg=' Cannot create the Star+Background region')
+        self.estimate_fits_region_star(fits_image)
+        self.estimate_fits_region_complete(fits_image)
         # Measure fluxes
-        self.verbose_detection(self.measure_star_fluxes, FitsImage.fits_data,
-                               errormsg=' Error measuring fluxes')
+        self.measure_star_fluxes(fits_image.fits_data)
         # Estimate centroid
-        self.verbose_detection(self.estimate_fits_region_centroid,
-                               FitsImage, True,
-                               errormsg=' Cannot create the Star+SecurityRing region')
-        self.verbose_detection(self.estimate_centroid,
-                               errormsg=' Star centroid calculated')
+        self.estimate_fits_region_centroid(fits_image, True)
+        self.estimate_centroid()
 
     def camera_dependent_photometry(self, FitsImage, image_info):
         # Measure fluxes
@@ -344,23 +335,23 @@ class Star(object):
     def photometric_radius(self, image_info):
         ''' Needs astrometry properties, photometric filter properties and image_info
             Returns R1,R2 and R3 '''
-        try:
+
             # Returns R1,R2,R3. Needs photometric properties and astrometry.
-            MF_magn = 10 ** (-0.4 * self.FilterMag)
-            MF_reso = 0.5 * (min(image_info.resolution) / 2500)
-            MF_airm = 0.7 * self.airmass
-            if (image_info.latitude >= 0):
-                MF_decl = 0.2 * image_info.exposure * abs(1. - self.dec / 90.)
-            else:
-                MF_decl = 0.2 * image_info.exposure * abs(1. + self.dec / 90.)
+        MF_magn = 10 ** (-0.4 * self.FilterMag)
+        MF_reso = 0.5 * (min(image_info.resolution) / 2500)
+        MF_airm = 0.7 * self.airmass
+        if (image_info.latitude >= 0):
+            MF_decl = 0.2 * image_info.exposure * abs(1. - self.dec / 90.)
+        else:
+            MF_decl = 0.2 * image_info.exposure * abs(1. + self.dec / 90.)
 
-            MF_totl = 1 + MF_magn + MF_reso + MF_decl + MF_airm
+        MF_totl = 1 + MF_magn + MF_reso + MF_decl + MF_airm
 
-            self.R1 = int(image_info.base_radius * MF_totl)
-            self.R2 = self.R1 * 1.5 + 1
-            self.R3 = self.R1 * 3.0 + 3
-        except StandardError:
-            self.invalid = True
+        self.R1 = int(image_info.base_radius * MF_totl)
+        self.R2 = self.R1 * 1.5 + 1
+        self.R3 = self.R1 * 3.0 + 3
+
+        #self.invalid = True
 
     def estimate_fits_region_star(self, FitsImage):
         ''' Return the region that contains the star 
@@ -392,7 +383,7 @@ class Star(object):
 
     def estimate_fits_region_centroid(self, FitsImage, coarse=False):
         ''' Return the region that contains the star+background '''
-        if (coarse == True):
+        if coarse:
             self.fits_region_centroid = [[FitsImage.fits_data[y, x]
                                           for x in xrange(int(self.Xcoord - self.R2 + 0.5),
                                                           int(self.Xcoord + self.R2 + 0.5))]

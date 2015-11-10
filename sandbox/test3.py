@@ -2,194 +2,14 @@ import sys
 
 sys.path.append('../')
 
-
-import logging
-
 import ConfigParser as configparser
 
 import numpy as np
-import numpy
-from astropy.io import fits
+
 from astropy.table import Table
+import astropy
 
 from pyasb.user import main
-from pyasb.astrometry import xy2horiz
-from pyasb.star_calibration import Star
-
-def create_synthetic_dark(dark_data, bias_data, t_sci, t_dark):
-    mdarkdata = dark_data - bias_data
-    mdarkdata *= (t_sci / t_dark)
-    mdarkdata += bias_data
-    return mdarkdata
-
-
-def basic_calibration(fname, configs):
-    used_filter = 'Johnson_V'
-    section = 'calibrations_%s' % used_filter
-
-    do_dark = True
-    do_flat = True
-    substract_corners_background = True
-    # Better a empty string ""?
-    darkname = ''
-    flatname = ''
-    biasname = ''
-
-    if configs.has_section(section):
-        darkname = configs.get(section, 'darkframe')
-        flatname = configs.get(section, 'flatfield')
-        biasname = configs.get(section, 'biasname')
-        if darkname == '':
-            do_dark = False
-
-        if flatname == '':
-            do_flat = False
-    else:
-        # Not really interesting
-        do_dark = False
-        do_flat = False
-
-    if not (do_dark or do_dark):
-        # we stop here
-        raise TypeError('no flat, no dark')
-
-    class ImageInfo(object):
-        resolution = [2500, 2500] # There are NAXIS1, NAXIS2 from images
-        delta_x = delta_x
-        delta_y = delta_y
-        radial_factor = radial_factor
-        azimuth_zeropoint = azimuth_zeropoint
-
-
-    image_info = ImageInfo()
-
-    msdata, msheader = fits.getdata(fname, header=True)
-    t_exp_science = float(msheader['EXPOSURE'])
-    # Horrible non standard format "%Y%m%d_%H%M%S"
-    fits_date = msheader['DATE']
-    import datetime
-
-    date_array = datetime.datetime.strptime(fits_date, "%Y%m%d_%H%M%S")
-    date_string = date_array.strftime("%Y/%m/%d %H:%M:%S")
-
-    print(fits_date)
-    print(date_array)
-    print(date_string)
-
-    fsdata = msdata[:]
-
-    if do_dark:
-        mdarkdata, mdarkheader = fits.getdata(darkname, header=True)
-        t_exp_dark = float(mdarkheader['EXPOSURE'])
-        # TODO: better comparation here
-        if t_exp_dark != t_exp_science:
-            print('trying to create a syn dark')
-            print('we need a bias')
-            if biasname:
-                bdata, bheader = fits.getdata(biasname, header=True)
-                mdarkdata = create_synthetic_dark(mdarkdata, bdata, t_exp_science, t_exp_dark)
-            else:
-                print('bias name is invalid')
-                raise TypeError('bias invalid')
-
-        print('corecting bias')
-        fsdata = dark_correction(fsdata, mdarkdata)
-
-    if substract_corners_background:
-        print('subtract background in the corner')
-        im_coor = image_coordinates(image_info)
-        altitude_map = im_coor[1]
-        fsdata, med, err = do_substract_corners_background(fsdata, altitude_map, limit=-20)
-        print("Removed: {:.2f} +/- {:.2f} counts from measured background".format(med, err))
-    if do_flat:
-        logging.info('loading master flat')
-        mflatdata, mflatheader = fits.getdata(flatname, header=True)
-
-        print('corecting flat field')
-        fsdata = flat_field_correction(fsdata, mflatdata)
-
-    return fsdata
-
-
-def dark_correction(data, masterdark_data):
-    return data - masterdark_data
-
-
-def flat_field_correction(data, masterflat_data):
-    return data / masterflat_data
-
-
-def do_substract_corners_background(array, altitude_map, limit=-20):
-    data_corners = array[altitude_map < limit]
-    bias_image_median = np.median(data_corners)
-    bias_image_std = np.std(data_corners)
-    bias_image_err = bias_image_std / np.sqrt(np.size(data_corners))
-    newarray = array - bias_image_median
-    return newarray, bias_image_median, bias_image_err
-
-
-def image_coordinates(image_info):
-    """Reimplementation with numpy arrays (fast on large arrays).
-     We need it as we will use a very large array"""
-
-    # Image coordinates
-    x = np.arange(image_info.resolution[0])
-    y = np.arange(image_info.resolution[1])
-    xx, yy = np.meshgrid(x, y)
-
-    # Unreal/projected altitude and azimuth
-    az, alt = xy2horiz(xx, yy, image_info, derotate=False)
-    azimuth_map = np.array(az, dtype='float32')
-    altitude_map = np.array(alt, dtype='float32')
-    return azimuth_map, altitude_map
-
-def build_star_record():
-    pass
-
-
-def create_stars_list(catfile):
-    catalogrec = numpy.recfromcsv(catfile, delimiter=';', skiprows=0)
-
-    table = Table(catalogrec)
-
-    print(table)
-
-    # max_star_number is a parameter
-    stars_tot = process_catalog_general(catalogrec, max_star_number=300)
-
-    print(" - Total stars: %d" % len(stars_tot))
-
-
-
-def process_catalog_general(catalogrec, max_star_number=-1):
-    """
-    Returns the processed catalog with
-    all the starts that should be visible.
-    """
-
-    if max_star_number < 0:
-        max_star_number = len(catalogrec)
-        print 'Using default for ', max_star_number
-
-    stars_tot = []
-
-    class OtherImageInfo(object):
-        used_filter = 'Johnson_V'
-        date_string = "2013/09/12 01:17:09"
-        #
-        latitude = 40.450941
-        longitude = -3.726065
-
-
-    image_info = OtherImageInfo()
-
-    for each_rec in catalogrec[:max_star_number]:
-        star = Star(each_rec, image_info)
-        stars_tot.append(star)
-
-    return stars_tot
-
-
 
 
 defaults = {
@@ -197,117 +17,117 @@ defaults = {
     'flatfield': '',
     'darkframe': ''
 }
-def horiz2eq(az, alt, image_info=None, sidtime=None, lat=None, lon=None):
-    '''
-    Calculate equatorial coordinates for the given observation site
-    and the given point in the sky
-    The coordinates must be given in degrees or hours
-    '''
 
-    if lat is None:
-        lat = image_info.latitude
-    if lon is None:
-        lon = image_info.longitude
-    if sidtime is None:
-        sidtime = image_info.sidereal_time
+def apply_refraction(real_alt):
+    # https://en.wikipedia.org/wiki/Atmospheric_refraction
+    # This model is valid at 1 Atm and 10 C
+    ang = (real_alt + 10.3 / (real_alt + 5.11))
+    cot_ang = (90 - ang) / 180.0 * np.pi
+    rr = 1.02 * np.tan(cot_ang) # In arc minutes
+    app_alt = real_alt + rr / 60.0
+    return app_alt
 
-    # Sidereal Time to Local Sidereal Time
-    sidtime = sidtime + lon / 15.
 
-    lat = lat * np.pi / 180.
-    lon = lon * np.pi / 180.
-    sidtime = sidtime * np.pi / 12.
-    az = az * np.pi / 180.
-    alt = alt * np.pi / 180.
+def correct_refraction(app_alt):
+    ang = app_alt + 7.31 / (app_alt + 4.4)
+    cot_ang = (90 - ang) / 180.0 * np.pi
+    rr = np.tan(cot_ang) # Arc minutes
+    real_alt = app_alt - rr / 60.0
+    return real_alt
 
-    _sindec = np.sin(alt) * np.sin(lat) + np.cos(alt) * \
-        np.cos(lat) * np.cos(az)
-    dec = np.arcsin(_sindec)
-    _cosdec = np.cos(dec)
-    _sinH = -np.sin(az) * np.cos(alt) / _cosdec
-    _cosH = (np.sin(alt) - _sindec * np.sin(lat)) / (_cosdec * np.cos(lat))
 
-    H = np.arctan2(_sinH, _cosH)
-    ra = sidtime - H
+def create_wcs1(customwcs):
+    cdelt = customwcs.cdelt
 
-    ra = (ra * 12. / np.pi) % 24
-    dec = dec * 180. / np.pi
+    refx = customwcs.refx
+    refy = customwcs.refy
 
-    return(ra, dec)
+    w1 = WCS(naxis=2)
+    w1.wcs.crpix = [refx, refy]
+    w1.wcs.cdelt = [cdelt, cdelt]
+    w1.wcs.crval = [90, 0]
+    w1.wcs.ctype = ["pLAT-ZEA", "pLON-ZEA"]
+    w1.wcs.lonpole = 180 - customwcs.azimuth_zeropoint
 
-def eq2horiz(ra, dec, image_info=None, sidtime=None, lat=None, lon=None):
-    '''
-    Calculate horizontal coordinates for the given observation site
-    and the given point in the sky.
-    The coordinates must be given in degrees or hours
-    '''
+    return w1
 
-    if lat is None:
-        lat = image_info.latitude
-    if lon is None:
-        lon = image_info.longitude
-    if sidtime is None:
-        sidtime = image_info.sidereal_time
+def create_wcs2(customwcs):
+    ref_az, ref_alt = customwcs.derot_1s(0, 90)
+    cdelt = customwcs.cdelt
 
-    # Sidereal Time to Local Sidereal Time
-    sidtime = sidtime + lon / 15.
+    refx = customwcs.refx
+    refy = customwcs.refy
 
-    lat = lat * np.pi / 180.
-    lon = lon * np.pi / 180.
-    sidtime = sidtime * np.pi / 12.
-    ra = ra * np.pi / 12.
-    dec = dec * np.pi / 180.
+    w2 = WCS(naxis=2)
+    w2.wcs.crpix = [refx, refy]
+    w2.wcs.cdelt = [cdelt, cdelt]
+    w2.wcs.crval = [ref_alt, ref_az]
+    w2.wcs.ctype = ["pLAT-ZEA", "pLON-ZEA"]
+    w2.wcs.lonpole = 180-customwcs.azimuth_zeropoint + ref_az
+    return w2
 
-    H = sidtime - ra
 
-    _sina = np.sin(dec) * np.sin(lat) + np.cos(dec) * np.cos(lat) * np.cos(H)
-    alt = np.arcsin(_sina)
-    _cosa = np.cos(alt)
-    _sinA = -np.sin(H) * np.cos(dec) / _cosa
-    _cosA = (np.sin(dec) - np.sin(lat) * _sina) / (_cosa * np.cos(lat))
-    az = np.arctan2(_sinA, _cosA)
+def photometric_radius(magnitude, airmass, exposure, latitude, dec, base_radius=0.8):
+    ''' Needs astrometry properties, photometric filter properties and image_info
+        Returns R1,R2 and R3 '''
 
-    az = (az * 180. / np.pi) % 360
-    alt = alt * 180. / np.pi
+        # Returns R1,R2,R3. Needs photometric properties and astrometry.
+    MF_magn = 10 ** (-0.4 * magnitude)
+    MF_reso = 0.5 #0.5 * (min(resolution) / 2500)
+    MF_airm = 0.7 * airmass
+    if latitude >= 0:
+        MF_decl = 0.2 * exposure * np.abs(1. - np.divide(dec, 90.0))
+    else:
+        MF_decl = 0.2 * exposure * np.abs(1. + np.divide(dec, 90.0))
 
-    return az, alt
+    MF_totl = 1 + MF_magn + MF_reso + MF_decl + MF_airm
 
-def horiz2xy(azimuth, altitude, image_info, derotate=True):
-    '''
-    Return X,Y position in the image from azimuth/altitude horizontal coord.
-    azimuth and altitude must be in degrees.
-    '''
+    R1 = base_radius * MF_totl
+    R2 = R1 * 1.5 + 1
+    R3 = R1 * 3.0 + 3
+    return R1, R2, R3
 
-    if derotate == True and (image_info.latitude_offset != 0 or image_info.longitude_offset != 0):
-        # We have a real azimuth and altitude coordinates. If the camera is not
-        # pointing to the zenith, we need to derotate the image.
-        print 'derotate'
-        print image_info.latitude_offset
-        ra_appa, dec_appa = horiz2eq(
-            azimuth, altitude,
-            image_info,
-            lat=image_info.latitude,
-            lon=image_info.longitude)
 
-        azimuth, altitude = eq2horiz(
-            ra_appa, dec_appa,
-            image_info,
-            lat=image_info.latitude - image_info.latitude_offset,
-            lon=image_info.longitude - image_info.longitude_offset)
+def filter_phot(table):
 
-    Rfactor = image_info.radial_factor * \
-        (180.0 / np.pi) * np.sqrt(2 * (1 - np.sin(altitude * np.pi / 180.0)))
-    X = image_info.resolution[0] / 2 + image_info.delta_x -\
-        Rfactor * \
-        np.cos(azimuth * np.pi / 180.0 -
-               image_info.azimuth_zeropoint * np.pi / 180.0)
-    Y = image_info.resolution[1] / 2 + image_info.delta_y +\
-        Rfactor * \
-        np.sin(azimuth * np.pi / 180.0 -
-               image_info.azimuth_zeropoint * np.pi / 180.0)
-    return X, Y
+    table.add_column(Column(np.zeros_like(table['vmag'], dtype='bool'), name='photo'))
+
+    double_mask = np.logical_not(np.char.isspace(table['doub']))
+
+    # Variable stars
+    variable_mask = np.logical_not(np.char.isspace(table['var']))
+
+    # Bad Photoemetry
+    bad_phot_mask = np.logical_not(np.char.isspace(table['bad_phot_']))
+
+    # Incomplete photometry
+    phot_nan_mask = np.zeros_like(table['vmag'], dtype='bool')
+    for colname in ['uv', 'bv', 'rv', 'iv']:
+        phot_nan_mask = np.logical_or(phot_nan_mask, np.isnan(table[colname]))
+
+    # photometric stars are
+    photo_mask = ~double_mask & ~variable_mask & ~bad_phot_mask & ~phot_nan_mask
+    table['photo'] = photo_mask
+
+#    good_phot = table.group_by('photo')
+#
+#    ntable = good_phot.groups[1]
+#
+#    extreme_colors_mask = (ntable['bv'] < -1) & (ntable['bv'] > 2)
+#    bright_stars_mask = ntable['vmag'] <= max_magnitude
+
+    # Check this can be done
+#    ntable['photo'][extreme_colors_mask] = False
+#    ntable['photo'][~bright_stars_mask] = True
+
+#    table_photometric = table
+    return table
+
 
 if __name__ == '__main__':
+
+    import matplotlib.pyplot as plt
+    import matplotlib.patches as ptc
 
     from astropy import units as u
     from astropy.coordinates import SkyCoord
@@ -318,15 +138,16 @@ if __name__ == '__main__':
     from astropy.table import Column
     import numpy
     from astropy.io import fits
-    #from wcsaxes import WCS
-    from astropy.wcs import WCS
+    from wcsaxes import WCS
+    #from astropy.wcs import WCS
+    from customwcs import CustomWCS
 
     input_options = main(['-i', 'Johnson_V20130912_011709.fit.gz'])
 
-    configs = configparser.SafeConfigParser(defaults=defaults)
-    configs.read('config.ini')
+    #configs = configparser.SafeConfigParser(defaults=defaults)
+    #configs.read('config.ini')
 
-    magfield = 'vamg'
+    magfield = 'vmag'
     colorfields = ['uv', 'bv', 'rv', 'iv']
 
     min_altitude = 15
@@ -340,71 +161,55 @@ if __name__ == '__main__':
     delta_y = -31.06643504
     radial_factor = 14.19766968
     azimuth_zeropoint = 88.64589921
+    azimuth_zeropoint = 90
 
-    for fname in input_options.fits_filename_list:
-        print('basic calibration')
+    latitude = 40.450941
+    longitude = -3.726065
+    height = 667
 
-        #final = basic_calibration(fname, configs)
+    delta_x = -18.63912476
+    delta_y = -31.06643504
+    radial_factor = 14.19766968
+    azimuth_zeropoint = 88.64589921
 
-        #fits.writeto('test.fits', final, clobber=True)
+    customwcs = CustomWCS()
 
+    if False:
         catfile = 'catalog.txt'
         print('load catalog from {}'.format(catfile))
 
         catalogrec = numpy.recfromcsv(catfile, delimiter=';', skiprows=0)
 
         table = Table(catalogrec)
-        print table.colnames
+
+        table2 = filter_phot(table)
+
+        table2.write('catalog2.txt', format='ascii.csv')
+    else:
+        catfile = 'catalog2.txt'
+        catalogrec = numpy.recfromcsv(catfile, delimiter=',', skiprows=0)
+        table = Table(catalogrec)
+
+    for fname in input_options.fits_filename_list:
+        print('basic calibration')
+
+        #final = basic_calibration(fname, configs)
+
+        #fits.writeto('corrected.fits', final, clobber=True)
+
+        #print table.colnames
 
         # Only the first 300
         table = table[:300]
 
-        # Double stars
-        double_mask = np.logical_not(np.char.isspace(table['doub']))
-
-        # Variable stars
-        variable_mask = np.logical_not(np.char.isspace(table['var']))
-
-        # Bad Photoemetry
-        bad_phot_mask = np.logical_not(np.char.isspace(table['bad_phot_']))
-
-        # Incomplete photometry
-        phot_nan_mask = np.zeros_like(table['vmag'], dtype='bool')
-        for colname in ['uv', 'bv', 'rv', 'iv']:
-            phot_nan_mask = np.logical_or(phot_nan_mask, np.isnan(table[colname]))
-
-        # photometric stars are
-        photo_mask = ~double_mask & ~variable_mask & ~bad_phot_mask & ~phot_nan_mask
-
-
-
-        ntable = table[photo_mask]
-        extreme_colors_mask = (ntable['bv'] < -1) & (ntable['bv'] > 2)
-        bright_stars_mask = ntable['vmag'] <= max_magnitude
-
-        table_photometric = ntable[~extreme_colors_mask & bright_stars_mask]
-
-        print 'photometric', len(table_photometric)
-        print 'full', len(table)
-
+        # full            | visible
+        # |- Photometric  | visible
 
         mm = SkyCoord(ra=table['raj1950'], dec=table['dej1950'], unit=(u.hourangle, u.deg), frame=FK5(equinox='J1950'))
-
-        mm2 = SkyCoord(ra=table['_raj2000'], dec=table['_dej2000'], unit=(u.hourangle, u.deg), frame=FK5(equinox='J2000'))
-
-
-        mm1 = mm.transform_to(FK5(equinox='J2000'))
-        # Correct
-
-        # mm1 ~ mm2
-
         location = EarthLocation(lat=latitude*u.deg, lon=longitude*u.deg, height=height*u.m)
 
         time = Time("2013-09-12 01:17:09")
         mm_altz = mm.transform_to(AltAz(obstime=time,location=location))
-        mm2_altz = mm2.transform_to(AltAz(obstime=time,location=location))
-
-        print mm_altz[4].alt.degree
 
         table.add_column(Column(mm_altz.alt.degree, name='alt'))
         table.add_column(Column(mm_altz.az.degree, name='az'))
@@ -414,42 +219,169 @@ if __name__ == '__main__':
         visibility_mask = mm_altz.alt.degree > min_altitude
 
         visible_catalog = table[visibility_mask]
-        print visible_catalog['recno', 'commonname', 'dec', 'ra', 'alt', 'az'][:5]
-        print len(visible_catalog)
-        #print mm_altz.secz
+
+        # And photometry
+
+        # Handle refraction
+        # Astropy does ref correction using ERFA complex models.
+        # Perhaps we should use that
+        # It requires Pressure, Temp, Humidity, etc
+        app_altz = apply_refraction(visible_catalog['alt'])
+
+        visible_catalog.add_column(Column(app_altz, name='alt_app'))
+
+        vx, vy = customwcs.horiz2xy(visible_catalog['az'], visible_catalog['alt_app'], derotate=True)
+
+        visible_catalog.add_column(Column(vx, name='x'))
+        visible_catalog.add_column(Column(vy, name='y'))
+
+        by_phot = visible_catalog.group_by('photo')
+        visible_catalog_phot = by_phot.groups[1]
+        print 'filtering catalog done'
+        print 'photometric', len(visible_catalog_phot)
+        print 'full', len(visible_catalog)
+
+        #print visible_catalog['name','photo'][:6]
+
+        #sys.exit(0)
         used_filter = 'Johnson_V'
 
-        class ImageInfo3(object):
-            latitude = latitude
-            longitude = longitude
+        print 'recenter stars'
+        from numina.array.recenter import centering_centroid, wc_to_pix_1d
+        data = fits.getdata('corrected.fits')
 
-            latitude_offset = -0.64102456
-            longitude_offset = 0.67447422
-            # Scale and rotation
-            radial_factor = radial_factor
-            azimuth_zeropoint = azimuth_zeropoint
-            sidereal_time = 5 # Seems irrelevant?
-            resolution = [2500, 2500] # There are NAXIS1, NAXIS2 from images
-            delta_x = delta_x
-            delta_y = delta_y
+        recentered_x = []
+        recentered_y = []
 
-        imageinfo3 = ImageInfo3()
+        show_recenter = True
 
-        print horiz2xy(300.29175212, 25.5948991205, imageinfo3, derotate=False)
+        nstars = 40
+
+        for x, y in visible_catalog['x', 'y'][:nstars]:
+
+            nx,ny, sb, status,_ = centering_centroid(data, x, y, box=(5, 5))
+
+            if status == 1:
+                recentered_x.append(nx)
+                recentered_y.append(ny)
+            else:
+                recentered_x.append(x)
+                recentered_y.append(y)
+            #continue
+            s = 10
+            ixp = wc_to_pix_1d(x)
+            iyp = wc_to_pix_1d(y)
+
+            if show_recenter:
+                fig = plt.figure()
+                ax = fig.add_subplot(111)
+
+                cut0 = data[iyp-s:iyp+s+1,ixp-s:ixp+s+1]
+
+                ax.imshow(cut0, origin='lower', interpolation='nearest',
+                          extent=[ixp-s-0.5, ixp+s+0.5, iyp-s-0.5, iyp+s+0.5])
+
+                ax.add_patch(ptc.Circle((x,y), 2,
+                    facecolor='none', edgecolor=(0, 0, 0.8),
+                    linewidth=1, fill=False, alpha=0.5,
+                    label='Origin'))
+                ax.add_patch(ptc.Circle((nx, ny), 2,
+                    facecolor='none', edgecolor=(0.8, 0, 0.8),
+                    linewidth=1, fill=False, alpha=0.5,
+                    label='Detected'))
+                ax.autoscale(False)
+                plt.show()
+
+        print 'done recentering'
+
+        data0 = fits.getdata('Johnson_V20130912_011709.fit.gz')
+        fig = plt.figure()
+        #ax1 = fig.add_axes([0.0, 0.0, 1.0, 1.0], projection=w1)
+        ax1 = fig.add_axes([0.0, 0.0, 1.0, 1.0])
+        #ax1.coords.grid(color='blue', alpha=0.5, linestyle='solid')
+        ax1.imshow(data0, origin='lower', interpolation='nearest')
+        ax1.autoscale(False)
+        #
+        ax1.plot(visible_catalog['x'][:nstars], visible_catalog['y'][:nstars], 'r*')
+        ax1.plot(recentered_x, recentered_y, 'b*')
+
+        magnitude = visible_catalog_phot['vmag']
+        airmass = 1.0 / np.cos(visible_catalog_phot['alt_app'])
+        exposure = 1.0
+        lat = 40
+        dec_vis_deg = mm[visibility_mask].dec.degree
+
+        #R1, R2, R3 = photometric_radius(magnitude, airmass, exposure, latitude, dec_vis_deg, base_radius=0.8)
+
+        # Looping seems the only way
+        for x, y, phot in zip(recentered_x, recentered_y, visible_catalog['photo'][:nstars]):
+            if phot:
+                ax1.add_patch(ptc.Circle((x,y), 5,
+                        facecolor='none', edgecolor='red',
+                        linewidth=1, fill=False, alpha=0.5,
+                        label='Origin'))
+            else:
+                ax1.add_patch(ptc.Circle((x,y), 5,
+                        facecolor='none', edgecolor='blue',
+                        linewidth=1, fill=False, alpha=0.5,
+                        label='Origin'))
+            if phot:
+                ax1.add_patch(ptc.Circle((x,y), 9,
+                        facecolor='none', edgecolor="red",
+                        linewidth=1, fill=False, alpha=0.5,
+                        label='Origin'))
+                ax1.add_patch(ptc.Circle((x,y), 11,
+                        facecolor='none', edgecolor="green",
+                        linewidth=1, fill=False, alpha=0.5,
+                        label='Origin'))
+
+        plt.show()
+
+        fig = plt.figure()
+        #ax1 = fig.add_axes([0.0, 0.0, 1.0, 1.0], projection=w1)
+        #ax2 = fig.add_axes([0.0, 0.0, 1.0, 1.0])
+
+        plt.plot(recentered_x, recentered_y, 'b*')
+        plt.show()
+
+        fig = plt.figure()
+        #ax1 = fig.add_axes([0.0, 0.0, 1.0, 1.0], projection=w1)
+        ax1 = fig.add_subplot(111)
+        #ax1.coords.grid(color='blue', alpha=0.5, linestyle='solid')
 
 
-        cdelt = 1.0 / radial_factor
+        print 'coordinate difference'
+        #ax1.plot(vx, vy, 'bo')
+        xx = visible_catalog['x'][:nstars]
+        yy = visible_catalog['y'][:nstars]
+        difx = recentered_x - xx
+        dify = recentered_y - yy
+        ax1.quiver(xx, yy, difx, dify, angles="xy", scale_units="xy", scale=1.0 / 50,
+                   width=5e-3,)
+        plt.show()
 
-        refx = 2500.0 / 2 + delta_x
-        refy = 2500.0 / 2 + delta_y
 
-        w = WCS(naxis=2)
-        w.wcs.crpix = [refx, refy]
-        w.wcs.cdelt = [cdelt, cdelt]
-        w.wcs.crval = [90, 0]
-        #w.wcs.crval = [85, 0]
-        w.wcs.ctype = ["DEC--ZEA", "RA---ZEA"]
-        w.wcs.lonpole = 180-azimuth_zeropoint
-        w.wcs.latpole = 90.0
+        print 'photometry'
 
-        print w.all_world2pix([[25.5948991205, 300.29175212]], 1)
+        from photutils import CircularAperture, aperture_photometry, CircularAnnulus
+
+        r1 = 5.0
+        r2 = 9.0
+        r3 = 11.0
+        x = recentered_x
+        y = recentered_y
+        positions = zip(x,y)
+        aper1 = CircularAperture(positions, r=r1)
+
+        aper3 = CircularAnnulus(positions, r_in=r2, r_out=r3)
+
+        rawflux_table = aperture_photometry(data, aper1)
+        bkgflux_table = aperture_photometry(data, aper3)
+        phot_table = astropy.table.hstack([rawflux_table, bkgflux_table], table_names=['raw', 'bkg'])
+
+        aperture_area = np.pi * r1 ** 2
+        annulus_area = np.pi * (r3 ** 2 - r2 ** 2)
+        bkg_sum = phot_table['aperture_sum_bkg'] * aperture_area / annulus_area
+        final_sum = phot_table['aperture_sum_raw'] - bkg_sum
+        phot_table['residual_aperture_sum'] = final_sum
+        print(phot_table['residual_aperture_sum'])
