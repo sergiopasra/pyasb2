@@ -253,7 +253,7 @@ if __name__ == '__main__':
         recentered_x = []
         recentered_y = []
 
-        show_recenter = True
+        show_recenter = False
 
         nstars = 40
 
