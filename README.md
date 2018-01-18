@@ -1,5 +1,5 @@
 PyASB (Python - All Sky Brightness pipeline)
-===========
+============================================
 
 Absolute photometry and Sky Brightness with all-sky images.
 

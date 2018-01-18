@@ -1,13 +1,12 @@
-#!/usr/bin/env python
 
 from setuptools import setup
 
-setup(name='pyasb',
-      version='1.0.dev0',
-      description='Python - All Sky Brightness pipeline',
-      author='Miguel Nievas',
-      author_email='miguelnr89[at]gmail[dot]com',
+setup(name='allsb',
+      version='0.1',
+      description='All Sky Brightness pipeline',
+      author='Sergio Pascual',
+      author_email='sergiopr@fis.ucm.es',
       license='GPLv3',
-      packages=['pyasb'],
-      install_requires=['numpy', 'scipy', 'astropy', 'pyephem', 'matplotlib'],
+      packages=['allsb'],
+      # install_requires=['numpy', 'scipy', 'astropy', 'pyephem', 'matplotlib'],
      )
