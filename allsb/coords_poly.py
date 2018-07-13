@@ -22,6 +22,7 @@ import astropy.table
 from astropy.wcs import WCS
 from astropy.io import fits
 
+from allsb.fitting import distance
 # import datetime
 
 
@@ -508,16 +509,6 @@ def compute_poly(x, y, r0, r1, rad, az=0.0):
     ang_theta = np.arcsin(factor)
 
     return ang_theta, ang_phi
-
-
-
-def distance(nom_theta_rad, nom_phi_rad, ang_theta_rad, ang_phi_rad):
-    # radians
-    t1 = np.sin(nom_theta_rad) * np.sin(ang_theta_rad)
-    t2 = np.cos(nom_theta_rad) * np.cos(ang_theta_rad)
-    ct = t1 + t2 * np.cos(np.abs(nom_phi_rad - ang_phi_rad))
-    dist = np.arccos(ct)
-    return dist
 
 
 def create_wcs2(pr):

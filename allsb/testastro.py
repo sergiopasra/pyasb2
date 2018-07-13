@@ -15,7 +15,7 @@ import astropy.io.fits as fits
 
 import requests
 import http.client
-
+import allsb.utils as U
 
 _logger = logging.getLogger(__name__)
 
@@ -43,6 +43,7 @@ def wcs_calibrate_astrometry_net(datafile):
     url_results = url_base + "/jobs/{}/calibration/"
     url_newfits = urlx_base + "/new_fits_file/{}"
     url_axyfile = urlx_base + "/axy_file/{}"
+    url_corrfile = urlx_base + "/corr_file/{}"
 
     while True:
         try:
@@ -63,18 +64,18 @@ def wcs_calibrate_astrometry_net(datafile):
             print(error)
 
     response = requests.get(url_results.format(jid))
-    nfile = insert_adj_filename(filename, 'results', ext='.json')
+    nfile = U.insert_adj_filename(filename, 'results', ext='.json')
     _logger.debug('save astrometry.net results in %s', nfile)
     with open(nfile, 'wb') as fd:
         fd.write(response.content)
 
 
-    urls = [url_newfits.format(jid), url_axyfile.format(jid)]
-    ajs_s = ['newfits', 'axyfile']
+    urls = [url_newfits.format(jid), url_corrfile.format(jid)]
+    ajs_s = ['newfits', 'corrfile']
 
     for url, adj in zip(urls, ajs_s):
         response = requests.get(url)
-        nfile = insert_adj_filename(filename, adj)
+        nfile = U.insert_adj_filename(filename, adj)
         _logger.debug('save in %s', nfile)
         with open(nfile, 'wb') as fd:
             fd.write(response.content)
@@ -88,11 +89,9 @@ def astro_session_key(session):
     return
 
 
-def cut_center(filename, hsize=500):
+def cut_center(filename, center, hsize=500):
     with fits.open(filename) as hdulist:
         data = hdulist[0].data
-        shape = data.shape
-        center = (shape[0] // 2, shape[1] // 2)
         newdata = data[center[0] - hsize:center[0] + hsize,
                   center[1] - hsize:center[1] + hsize]
         newhdu = fits.PrimaryHDU(newdata, hdulist[0].header)
@@ -100,15 +99,7 @@ def cut_center(filename, hsize=500):
 
 
 def calc_filename_center(filename):
-    return insert_adj_filename(filename, 'center')
-
-
-def insert_adj_filename(filename, adj, ext=None):
-    head, tail = os.path.split(filename)
-    root, mext = os.path.splitext(tail)
-    if ext is not None:
-        mext = ext
-    return os.path.join(head, "{}_{}{}".format(root, adj, mext))
+    return U.insert_adj_filename(filename, 'center')
 
 
 def astro_upload_file(session, session_key, datafile):
@@ -121,7 +112,11 @@ def astro_upload_file(session, session_key, datafile):
 
     filename = datafile['filename']
     # cut filename
-    cut_hdu = cut_center(filename)
+    res = datafile['res']
+
+    center = (int(res[1]), int(res[0]))
+    _logger.debug('computing cut image around x=%s, y=%s', center[1], center[0])
+    cut_hdu = cut_center(filename, center)
     cut_filename = calc_filename_center(filename)
     cut_hdu.writeto(cut_filename, overwrite=True)
 

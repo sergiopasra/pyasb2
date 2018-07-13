@@ -25,6 +25,8 @@ from allsb.reduction import reduction
 import numpy
 import numpy.linalg as linalg
 
+from allsb.fitting import distance, nwarp, compute
+
 
 def fit_offset_and_rotation(coords0, coords1):
     """Fit a rotation and a traslation between two sets points.
@@ -118,38 +120,6 @@ def fit_rotation(coords0, coords1):
     return rot
 
 
-def rotation_axis(matrix):
-    a1 = matrix[2,1] - matrix[1,2]
-    a2 = matrix[0,2] - matrix[2,0]
-    a3 = matrix[1,0] - matrix[0,1]
-    return np.array([a1, a2, a3])
-
-
-def rotation_angle(matrix):
-    cost = 0.5 * (np.trace(matrix) - 1)
-    return math.acos(cost)
-
-
-def nwarp(angles):
-    # return angles
-    ang = np.fmod(angles, 2 * math.pi)
-    neg = ang < 0
-    ang[neg] += 2 * math.pi
-    return ang
-
-
-def matrix_vector(ang_theta, ang_phi):
-    cos_theta = np.cos(ang_theta)
-    sin_theta = np.sin(ang_theta)
-    cos_phi = np.cos(ang_phi)
-    sin_phi = np.sin(ang_phi)
-    l = cos_theta * cos_phi
-    m = cos_theta * sin_phi
-    n = sin_theta
-    out = np.array([l, m, n])
-    return out
-
-
 def main():
 
     # Location
@@ -228,7 +198,8 @@ def main():
     print('--------')
     ang_theta, ang_phi = compute(coords_x, coords_y, x0, y0)
     #print(ang_phi)
-
+    print(ang_phi, ang_theta)
+    print('--------')
     nom_theta = sub2['alt']
     nom_phi = sub2['az']
     if True:
@@ -245,33 +216,6 @@ def main():
 
     return
 
-def compute(x, y, r0, r1):
-    # Returns radians
-    radial_factor = 1 / 14.19766968
-    pr0 = np.asarray(x) - r0
-    pr1 = np.asarray(y) - r1
-
-    # IN equations, X axis is inverted (grows to the left)
-    x2 = -radial_factor * pr0
-    y2 =  radial_factor * pr1
-
-    rad_theta = np.hypot(x2, y2) # degrees
-    ang_phi = np.arctan2(x2, -y2)
-
-    ang_theta = np.arcsin(1 - (rad_theta / 180 * math.pi)**2 / 2)
-
-    return ang_theta, ang_phi
-
-
-def distance(nom_theta_rad, nom_phi_rad, ang_theta_rad, ang_phi_rad):
-    # radians
-    t1 = np.sin(nom_theta_rad) * np.sin(ang_theta_rad)
-    t2 = np.cos(nom_theta_rad) * np.cos(ang_theta_rad)
-    ct = t1 + t2 * np.cos(np.abs(nom_phi_rad - ang_phi_rad))
-    dist = np.arccos(ct)
-    return dist
-
-import numpy.polynomial.polynomial as P
 
 def calcm(x, y, x0, y0, pol, a0, E, eps):
     x = np.asarray(x)
@@ -280,24 +224,17 @@ def calcm(x, y, x0, y0, pol, a0, E, eps):
     yy = y - y0
     r = np.hypot(xx, yy)
 
-    radial_factor = 1 / 14.19766968
-    rad_theta = radial_factor * r
-    ang_theta = np.arcsin(1 - (rad_theta / 180 * math.pi) ** 2 / 2)
-    ang = np.arctan2(yy, -xx) # clockwise angle
+    # radial_factor = 1 / 14.19766968
+    # rad_theta = radial_factor * r
+    # ang_theta = np.arcsin(1 - (rad_theta / 180 * math.pi) ** 2 / 2)
+    #u = math.pi / 2 - ang_theta
+    u = pol[2] + r * (pol[1] * r + pol[0])
 
-    u = math.pi / 2 - ang_theta
-    #u2 = P.polyval(r, pol)
-    #plt.scatter(rad_theta, u)
-    #plt.scatter(rad_theta, u2)
-    #plt.show()
-
-    #u = P.polyval(r, pol)
-    #print('rad_t. U')
-    #print(math.pi / 2 - u)
-
+    ang = np.arctan2(yy, -xx)  # clockwise angle
     b = a0 - E + ang
 
     cos_z = np.cos(u) * math.cos(eps) - np.sin(u) * math.sin(eps) * np.cos(b)
+
     z_dis = np.arccos(cos_z)
     sin_z = np.sin(z_dis)
     sin_az_E = np.sin(b) * np.sin(u) / sin_z
