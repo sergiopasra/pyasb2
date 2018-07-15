@@ -2,8 +2,9 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from astropy.io import fits
+from astropy.wcs import WCS
 
-from wcsaxes import WCS
+#from wcsaxes import WCS
 
 latitude = 40.450941
 refx, refy = 1231.36087524, 1218.93356496
@@ -20,6 +21,8 @@ w1.wcs.cdelt = [cdeltx, cdelty]
 w1.wcs.crval = [90, 0]
 w1.wcs.ctype = ["pLAT-ZEA", "pLON-ZEA"]
 w1.wcs.lonpole = 90
+
+print(w1)
 
 w1.all_world2pix([[0,0]], 1)
 header1 = w1.to_header()
@@ -60,13 +63,13 @@ hdul.writeto('test.fits', clobber=True)
 
 fig = plt.figure()
 
-ax1 = fig.add_axes([0.0, 0.0, 1.0, 1.0], projection=w2)
+ax1 = fig.add_axes([0.0, 0.0, 1.0, 1.0], projection=w1)
 
 ax1.coords.grid(color='blue', alpha=1, linestyle='solid')
-overlay = ax1.get_coords_overlay(w1)
-overlay.grid(color='white', linestyle='solid', alpha=1)
-overlay3 = ax1.get_coords_overlay(w3)
-overlay3.grid(color='green', linestyle='solid', alpha=1)
+overlay1 = ax1.get_coords_overlay(w1)
+overlay1.grid(color='white', linestyle='solid', alpha=1)
+#overlay3 = ax1.get_coords_overlay(w3)
+#overlay3.grid(color='green', linestyle='solid', alpha=1)
 ax1.imshow(data, origin='lower')
 
 plt.show()
