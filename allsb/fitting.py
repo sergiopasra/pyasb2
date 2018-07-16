@@ -179,6 +179,8 @@ def distance(nom_theta_rad, nom_phi_rad, ang_theta_rad, ang_phi_rad):
     t1 = np.sin(nom_theta_rad) * np.sin(ang_theta_rad)
     t2 = np.cos(nom_theta_rad) * np.cos(ang_theta_rad)
     ct = t1 + t2 * np.cos(np.abs(nom_phi_rad - ang_phi_rad))
+    # Avoid roundig errors
+    ct = np.clip(ct, -1, 1)
     dist = np.arccos(ct)
     return dist
 
