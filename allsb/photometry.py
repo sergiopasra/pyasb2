@@ -21,6 +21,7 @@ from astropy.wcs import WCS
 from astropy.io import fits
 
 # import datetime
+_logger = logging.getLogger(__name__)
 
 
 def nwarp(angles):
@@ -29,6 +30,68 @@ def nwarp(angles):
     neg = ang < 0
     ang[neg] += 2 * math.pi
     return ang
+
+
+def filter_phot_catalogue(catfile, min_magnitude=6.0):
+    _logger.debug('read photo catalog')
+    table = Table.read(catfile, format='ascii.csv')
+    _logger.debug('filter stars by mag/photomety min_mag=%s', min_magnitude)
+
+    by_phot = table.group_by('photo')
+
+    catalog_phot = by_phot.groups[1]
+    # visible_catalog_phot = visible_catalog
+    current_mag = catalog_phot['vmag']
+    magnitude_mask = current_mag < min_magnitude
+    cpl = catalog_phot[magnitude_mask]
+    return table
+    return cpl
+
+
+def filter_catalogue(catfile, min_magnitude=6.0):
+    _logger.debug('read catalog')
+    table = Table.read(catfile, format='ascii.csv')
+    _logger.debug('filter stars by mag min_mag=%s', min_magnitude)
+
+    current_mag = table['vmag']
+    magnitude_mask = current_mag < min_magnitude
+    cpl = table[magnitude_mask]
+    return cpl
+
+
+
+def prepare_phot_catalogue(table, aaframe, min_altitude=25):
+
+    # load astrometry
+
+    # Load star catalog
+    _logger.debug('convert coordinates from J1950')
+    #print(table)
+    coords_sky = SkyCoord(
+        ra=table['raj1950'],
+        dec=table['dej1950'],
+        unit=(u.hourangle, u.deg),
+        frame=FK5(equinox='J1950')
+    )
+
+    # star postition predictions
+    _logger.debug('add RADec columns')
+    table.add_column(Column(coords_sky.dec.degree, name='dec'))
+    table.add_column(Column(coords_sky.ra.degree, name='ra'))
+
+    coords_altz = coords_sky.transform_to(aaframe)
+
+    _logger.debug('add AltAz columns')
+    table.add_column(Column(coords_altz.alt.radian, name='alt'))
+    table.add_column(Column(coords_altz.az.radian, name='az'))
+    table.add_column(Column(coords_altz.alt.degree, name='alt_deg'))
+    table.add_column(Column(coords_altz.az.degree, name='az_deg'))
+
+    _logger.debug('filter columns for visibility, alt>%s', min_altitude)
+    # Use color if needed
+    visibility_mask = coords_altz.alt.degree > min_altitude
+    visible_catalog = table[visibility_mask]
+    return visible_catalog
 
 
 def main():
@@ -45,80 +108,39 @@ def main():
     )
 
     time = Time("2013-09-12 01:17:09")
-
-    # load astrometry
-    header = fits.Header.fromfile('header2.txt')
-    wcs = WCS(header)
-
-    # Load star catalog
-    catfile = 'catalog2.txt'
-    print('read catalog')
-    table = Table.read(catfile, format='ascii.csv')
-    print('filter stars by mag/photomety')
-
-    min_magnitude = 6.0
-
-    by_phot = table.group_by('photo')
-
-    catalog_phot = by_phot.groups[1]
-    # visible_catalog_phot = visible_catalog
-    current_mag = catalog_phot['vmag']
-    magnitude_mask = current_mag < min_magnitude
-    cpl = catalog_phot[magnitude_mask]
-    table = cpl
-    print('catalog', len(cpl))
-
-    print('convert coordinates')
-    #print(table)
-    coords_sky = SkyCoord(
-        ra=table['raj1950'],
-        dec=table['dej1950'],
-        unit=(u.hourangle, u.deg),
-        frame=FK5(equinox='J1950')
-    )
-    #
     aaframe = AltAz(obstime=time, location=location,
                     temperature=10 * u.deg_C,
                     pressure=101325 * u.Pa,
                     obswl=0.5 * u.micron
                     )
-    # print(aaframe)
-    # star postition predictions
-    coords_altz = coords_sky.transform_to(aaframe)
-    print('add columns')
-    table.add_column(Column(coords_altz.alt.radian, name='alt'))
-    table.add_column(Column(coords_altz.az.radian, name='az'))
-    table.add_column(Column(coords_altz.alt.degree, name='alt_deg'))
-    table.add_column(Column(coords_altz.az.degree, name='az_deg'))
-    table.add_column(Column(coords_sky.dec.degree, name='dec'))
-    table.add_column(Column(coords_sky.ra.degree, name='ra'))
 
-    print('filter columns')
-    # print(sub2)
-
+    min_magnitude = 6.0
     min_altitude = 25
+    catfile = '/home/spr/devel/github/pyasb2/catalog2.txt'
 
-    # Use color if needed
-    visibility_mask = coords_altz.alt.degree > min_altitude
+    table = filter_phot_catalogue(catfile, min_magnitude)
+    table = prepare_phot_catalogue(table, aaframe, min_altitude)
+    _logger.debug('we have %s photo stars', len(table))
 
-    visible_catalog = table[visibility_mask]
+    # load astrometry
+    #header = fits.Header.fromfile('header2.txt')
+    #wcs = WCS(header)
 
-    vcpl = visible_catalog
-    print('catalog', len(vcpl))
+    print('catalog', len(table))
     #print(vcpl)
     #print(vcpl['alt_deg'])
-    itl = np.array([vcpl['alt_deg'], vcpl['az_deg']]).T
+    #itl = np.array([table['alt_deg'], table['az_deg']]).T
 
     #print(itl.shape)
     #print(wcs)
 
-    res = wcs.all_world2pix(itl, 1)
+    #res = wcs.all_world2pix(itl, 1)
 
-    vcpl.add_column(Column(res[:, 0], name='x'))
-    vcpl.add_column(Column(res[:, 1], name='y'))
+    #table.add_column(Column(res[:, 0], name='x'))
+    #table.add_column(Column(res[:, 1], name='y'))
 
-    nom_theta = vcpl['alt']
-    nom_phi = vcpl['az']
+    nom_theta = table['alt']
+    nom_phi = table['az']
 
     if False:
         f, axs = plt.subplots(1, 1, subplot_kw=dict(projection='polar'))

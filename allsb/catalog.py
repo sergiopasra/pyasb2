@@ -13,7 +13,7 @@ def read_an_axfile(filename, aaframe):
     """Read Astrometry.net catalog"""
     from astropy.table import Table
     table_obs = Table.read(filename, format='fits')
-
+    print(filename)
     ra_col = 'field_ra'
     dec_col = 'field_dec'
 

@@ -25,7 +25,7 @@ from allsb.reduction import reduction
 import numpy
 import numpy.linalg as linalg
 
-from allsb.fitting import distance, nwarp, compute
+from allsb.projection import compute
 
 
 def fit_offset_and_rotation(coords0, coords1):

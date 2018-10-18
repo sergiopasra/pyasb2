@@ -92,6 +92,8 @@ def astro_session_key(session):
 def cut_center(filename, center, hsize=500):
     with fits.open(filename) as hdulist:
         data = hdulist[0].data
+        print('coordinates')
+        print(center[0] - hsize, center[0] + hsize, center[1] - hsize, center[1] + hsize)
         newdata = data[center[0] - hsize:center[0] + hsize,
                   center[1] - hsize:center[1] + hsize]
         newhdu = fits.PrimaryHDU(newdata, hdulist[0].header)
@@ -116,7 +118,7 @@ def astro_upload_file(session, session_key, datafile):
 
     center = (int(res[1]), int(res[0]))
     _logger.debug('computing cut image around x=%s, y=%s', center[1], center[0])
-    cut_hdu = cut_center(filename, center)
+    cut_hdu = cut_center(filename, center, hsize=500)
     cut_filename = calc_filename_center(filename)
     cut_hdu.writeto(cut_filename, overwrite=True)
 
