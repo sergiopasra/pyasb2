@@ -21,29 +21,28 @@ _logger = logging.getLogger(__name__)
 
 
 AN_API_KEY = 'gmbziuhfdkfnpysg'
-SESSION_KEY = "pc0noq04x1gdzmc3brycrtr108vytr35"
-
-url_base = "http://nova.astrometry.net/api"
-urlx_base = "http://nova.astrometry.net"
+URL_API = "http://nova.astrometry.net/api"
+URL_BASE = "http://nova.astrometry.net"
 
 
 def wcs_calibrate_astrometry_net(datafile):
     _logger.debug('shape is {shape}'.format(**datafile))
     _logger.debug('calibrate in astrometry.net')
-    #astro_session()
 
     session = requests.Session()
-    # astro_session_key(session)
+    session_key = astro_session_key(session)
     filename = datafile['filename']
 
-    response = astro_upload_file(session, SESSION_KEY, datafile)
+    response = astro_upload_file(session, session_key, datafile)
 
-    url = (url_base + "/submissions/{subid}").format(**response.json())
-    url_jobs = url_base + "/jobs/{}"
-    url_results = url_base + "/jobs/{}/calibration/"
-    url_newfits = urlx_base + "/new_fits_file/{}"
-    url_axyfile = urlx_base + "/axy_file/{}"
-    url_corrfile = urlx_base + "/corr_file/{}"
+    url_sub = URL_API + "/submissions/{subid}"
+    url_jobs = URL_API + "/jobs/{}"
+    url_results = URL_API + "/jobs/{}/calibration/"
+    url_newfits = URL_BASE + "/new_fits_file/{}"
+    url_axyfile = URL_BASE + "/axy_file/{}"
+    url_corrfile = URL_BASE + "/corr_file/{}"
+
+    url = url_sub.format(**response.json())
 
     while True:
         try:
@@ -84,9 +83,14 @@ def wcs_calibrate_astrometry_net(datafile):
 def astro_session_key(session):
 
     rjson = json.dumps({"apikey": AN_API_KEY})
-    result = session.post('http://nova.astrometry.net/api/login', data={'request-json': rjson})
-    print(result)
-    return
+    url_login = URL_API + '/login'
+    result = session.post(url_login, data={'request-json': rjson})
+    print('login', result.json())
+    sess = result.json().get('session')
+    print('Got session:', sess)
+    if not sess:
+        raise ValueError('No "session" in response')
+    return sess
 
 
 def cut_center(filename, center, hsize=500):
@@ -130,7 +134,8 @@ def astro_upload_file(session, session_key, datafile):
         raise
 
     headers, data = data_encode(upload_args, file_args)
-    response = session.post('http://nova.astrometry.net/api/upload', headers=headers, data=data)
+    url_upload = URL_API + '/upload'
+    response = session.post(url_upload, headers=headers, data=data)
     return response
 
 
