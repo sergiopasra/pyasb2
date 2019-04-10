@@ -197,10 +197,21 @@ def distance(nom_theta_rad, nom_phi_rad, ang_theta_rad, ang_phi_rad):
     t1 = np.sin(nom_theta_rad) * np.sin(ang_theta_rad)
     t2 = np.cos(nom_theta_rad) * np.cos(ang_theta_rad)
     ct = t1 + t2 * np.cos(np.abs(nom_phi_rad - ang_phi_rad))
-    # Avoid roundig errors
+    # Avoid rounding errors
     ct = np.clip(ct, -1, 1)
     dist = np.arccos(ct)
     return dist
+
+
+def distance_hav(nom_theta_rad, nom_phi_rad, ang_theta_rad, ang_phi_rad):
+    # radians
+    # using haversine to avoid rounding errors
+    t1a = np.sin(0.5 * (nom_theta_rad - ang_theta_rad))
+    t2a = np.sin(0.5 * (nom_phi_rad - ang_phi_rad))
+    ct = t1a**2 + np.cos(nom_theta_rad) * np.cos(ang_theta_rad) * t2a**2
+    dist = 2 * np.arcsin(np.sqrt(ct))
+    return dist
+
 
 
 def rotation_axis(matrix):

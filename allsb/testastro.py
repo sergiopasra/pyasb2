@@ -25,15 +25,14 @@ URL_API = "http://nova.astrometry.net/api"
 URL_BASE = "http://nova.astrometry.net"
 
 
-def wcs_calibrate_astrometry_net(datafile):
-    _logger.debug('shape is {shape}'.format(**datafile))
+def wcs_calibrate_astrometry_net(filename, center_ij):
+    # _logger.debug('shape is {shape}'.format(**datafile))
     _logger.debug('calibrate in astrometry.net')
 
     session = requests.Session()
     session_key = astro_session_key(session)
-    filename = datafile['filename']
 
-    response = astro_upload_file(session, session_key, datafile)
+    response = astro_upload_file(session, session_key, filename, center_ij)
 
     url_sub = URL_API + "/submissions/{subid}"
     url_jobs = URL_API + "/jobs/{}"
@@ -48,26 +47,25 @@ def wcs_calibrate_astrometry_net(datafile):
         try:
             response = requests.get(url)
             mm = response.json()
-            print(mm)
+            _logger.debug("response.json() %s", mm)
             time.sleep(5)
-            print('jobs:', mm['jobs'])
+            _logger.debug('jobs: %s', mm['jobs'])
             if mm['jobs']:
                 for jid in mm['jobs']:
                     if jid is not None:
                         response_job = requests.get(url_jobs.format(jid))
-                        print('job', jid, response_job.text)
-            print('job_calibrations:', mm['job_calibrations'])
+                        _logger.debug('job %s %s', jid, response_job.text)
+            _logger.debug('job_calibrations: %s', mm['job_calibrations'])
             if mm['job_calibrations']:
                 break
         except http.client.RemoteDisconnected as error:
-            print(error)
+            _logger.error("%s", error)
 
     response = requests.get(url_results.format(jid))
     nfile = U.insert_adj_filename(filename, 'results', ext='.json')
     _logger.debug('save astrometry.net results in %s', nfile)
     with open(nfile, 'wb') as fd:
         fd.write(response.content)
-
 
     urls = [url_newfits.format(jid), url_corrfile.format(jid)]
     ajs_s = ['newfits', 'corrfile']
@@ -85,9 +83,9 @@ def astro_session_key(session):
     rjson = json.dumps({"apikey": AN_API_KEY})
     url_login = URL_API + '/login'
     result = session.post(url_login, data={'request-json': rjson})
-    print('login', result.json())
+    _logger.debug('login %s', result.json())
     sess = result.json().get('session')
-    print('Got session:', sess)
+    _logger.debug('Got session: %s', sess)
     if not sess:
         raise ValueError('No "session" in response')
     return sess
@@ -96,8 +94,8 @@ def astro_session_key(session):
 def cut_center(filename, center, hsize=500):
     with fits.open(filename) as hdulist:
         data = hdulist[0].data
-        print('coordinates')
-        print(center[0] - hsize, center[0] + hsize, center[1] - hsize, center[1] + hsize)
+        _logger.debug('coordinates %s %s %s %s', center[0] - hsize, center[0] + hsize, center[1] - hsize, center[1] + hsize)
+
         newdata = data[center[0] - hsize:center[0] + hsize,
                   center[1] - hsize:center[1] + hsize]
         newhdu = fits.PrimaryHDU(newdata, hdulist[0].header)
@@ -108,7 +106,7 @@ def calc_filename_center(filename):
     return U.insert_adj_filename(filename, 'center')
 
 
-def astro_upload_file(session, session_key, datafile):
+def astro_upload_file(session, session_key, filename, center_ij, hsize=500):
     upload_args = {
         'scale_upper': 90.0, 'publicly_visible': 'y',
         'allow_modifications': 'd', 'scale_type': 'ul',
@@ -116,13 +114,8 @@ def astro_upload_file(session, session_key, datafile):
     }
     upload_args['session'] = session_key
 
-    filename = datafile['filename']
-    # cut filename
-    res = datafile['res']
-
-    center = (int(res[1]), int(res[0]))
-    _logger.debug('computing cut image around x=%s, y=%s', center[1], center[0])
-    cut_hdu = cut_center(filename, center, hsize=500)
+    _logger.debug('computing cut image around (i,j)=%s', center_ij)
+    cut_hdu = cut_center(filename, center_ij, hsize)
     cut_filename = calc_filename_center(filename)
     cut_hdu.writeto(cut_filename, overwrite=True)
 
@@ -130,7 +123,7 @@ def astro_upload_file(session, session_key, datafile):
         with open(cut_filename, 'rb') as f:
             file_args = (cut_filename, f.read())
     except IOError as error:
-        print(error)
+        _logger.error("%s", error)
         raise
 
     headers, data = data_encode(upload_args, file_args)

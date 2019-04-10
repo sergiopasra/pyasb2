@@ -4,13 +4,19 @@ import numpy as np
 import math
 
 
-from .projection import proj_zen_eqa, distance
+from .projection import proj_zen_eqa, distance, distance_hav
 
 
 def calc_projection_zen_eqa(params, x, y, alt, az):
 
-    res = lmfit.minimize(residual_zen_eqa, params, args=(x, y, alt, az))
+    res = lmfit.minimize(residual_zen_eqa, params, args=(x, y, alt, az),
+                         iter_cb=iter_cb,
+                         maxfev=1000)
     return res
+
+
+def iter_cb(params, iter, resid, *args, **kws):
+    print(iter, resid)
 
 
 def residual_zen_eqa(params, x, y, alt, az):
@@ -24,7 +30,8 @@ def residual_zen_eqa(params, x, y, alt, az):
 
     c_alt, c_az = proj_zen_eqa(x, y, x0, y0, scale, a0, E, eps)
 
-    dist = distance(alt, az, c_alt, c_az)
+    # dist = np.rad2deg(distance(alt, az, c_alt, c_az))
+    dist = distance_hav(alt, az, c_alt, c_az)
     return dist
 
 

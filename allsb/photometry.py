@@ -44,7 +44,6 @@ def filter_phot_catalogue(catfile, min_magnitude=6.0):
     current_mag = catalog_phot['vmag']
     magnitude_mask = current_mag < min_magnitude
     cpl = catalog_phot[magnitude_mask]
-    return table
     return cpl
 
 
@@ -57,7 +56,6 @@ def filter_catalogue(catfile, min_magnitude=6.0):
     magnitude_mask = current_mag < min_magnitude
     cpl = table[magnitude_mask]
     return cpl
-
 
 
 def prepare_phot_catalogue(table, aaframe, min_altitude=25):
@@ -92,6 +90,41 @@ def prepare_phot_catalogue(table, aaframe, min_altitude=25):
     visibility_mask = coords_altz.alt.degree > min_altitude
     visible_catalog = table[visibility_mask]
     return visible_catalog
+
+
+def prepare_astrometry_catalogue(table, aaframe, min_altitude=25):
+
+    # load astrometry
+
+    # Load star catalog
+    _logger.debug('convert coordinates from J1950')
+    #print(table)
+    coords_sky = SkyCoord(
+        ra=table['raj1950'],
+        dec=table['dej1950'],
+        unit=(u.hourangle, u.deg),
+        frame=FK5(equinox='J1950')
+    )
+
+    # star postition predictions
+    _logger.debug('add RADec columns')
+    table.add_column(Column(coords_sky.dec.degree, name='dec'))
+    table.add_column(Column(coords_sky.ra.degree, name='ra'))
+
+    coords_altz = coords_sky.transform_to(aaframe)
+
+    _logger.debug('add AltAz columns')
+    table.add_column(Column(coords_altz.alt.radian, name='alt'))
+    table.add_column(Column(coords_altz.az.radian, name='az'))
+    table.add_column(Column(coords_altz.alt.degree, name='alt_deg'))
+    table.add_column(Column(coords_altz.az.degree, name='az_deg'))
+
+    _logger.debug('filter columns for visibility, alt>%s', min_altitude)
+    # Use color if needed
+    visibility_mask = coords_altz.alt.degree > min_altitude
+    visible_catalog = table[visibility_mask]
+    return visible_catalog
+
 
 
 def main():

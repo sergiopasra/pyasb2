@@ -6,9 +6,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import patches
 
-
+import skimage
 import skimage.morphology as M
-import skimage.filters  as F
+import skimage.filters as F
+import skimage.feature as T
 from skimage.measure import label, regionprops
 
 
@@ -27,20 +28,37 @@ def maxcircle_img(image, do_plots=False):
     markers = np.zeros_like(image)
     markers[0:10,0:10] = 1
     markers[2000:2010, 2000:2010] = 2
-    #print('T mim', F.threshold_minimum(image))
+
+    # print('T mim', F.threshold_minimum(image))
+
+    #plt.hist(image.ravel()[::100], bins='auto')
+    #plt.show()
+
+
+    print(image.dtype)
 
     th_o = F.threshold_otsu(image)
     _logger.debug('reference threshold, Otsu method %s', th_o)
 
+    img_median = F.median(skimage.img_as_float(image), M.disk(5))
+
+    fits.writeto('dum.fits', img_median, overwrite=True)
+
+    edges = T.canny(img_median)
     #markers[image < th_o *0.9] = 1
     #markers[image > th_o *1.1] = 2
 
     #plt.hist(image.ravel()[::100], bins='auto')
     #plt.show()
-
+    plt.imshow(img_median)
+    plt.show()
+    plt.imshow(edges)
+    plt.show()
+    return 0
     emap = F.sobel(image)
     _logger.debug('sobel done')
     if do_plots:
+        plt.title('Sobel')
         plt.imshow(emap)
         plt.show()
     _logger.debug('segmentation')
