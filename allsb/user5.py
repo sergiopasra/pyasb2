@@ -9,6 +9,9 @@ import astropy.io.fits as fits
 import allsb.utils
 import allsb.cameras as cams
 from allsb.testastro import wcs_calibrate_astrometry_net
+from allsb.photometry import filter_catalogue
+import allsb.calcwcs
+
 
 _logger = logging.getLogger(__name__)
 
@@ -40,23 +43,11 @@ def basic_process_files(cameras, filename):
         return thisdatafile
 
 
-def calc_aaframe(location, obstime):
-    from astropy.coordinates import AltAz
-    import astropy.units as u
-
-    aaframe = AltAz(
-        obstime=obstime,
-        location=location,
-        temperature=10 * u.deg_C,  # Values to get refraction
-        pressure=101325 * u.Pa,
-        obswl=0.5 * u.micron # This value can come from the filter...
-    )
-    return aaframe
-
-
-def compute_initial_wcs(image_info, center_ij=None):
+def compute_initial_wcs(image_info, center_ij=None, scale=None):
     import math
 
+    # The scale gives an idea of the plate scale
+    # we could send it as a parameter to AN.net
     rad0 = 1100
 
     res = (1282.4836, 1911.9343, math.sqrt(2) / rad0)
@@ -107,11 +98,24 @@ def main(args=None):
     _logger.debug('location %s', image_info['expoinfo'].location)
     _logger.debug('obstime %s', image_info['expoinfo'].obstime)
 
-    altaz_frame = calc_aaframe(image_info['expoinfo'].location, image_info['expoinfo'].obstime)
-    _logger.debug('altaz frame %s', altaz_frame)
-
+    # Prepare for computing the WCS solution
+    # Initial solution for the center of the image
     compute_initial_wcs(image_info)
 
+
+    # Prepare catalogue
+    min_magnitude = 6.0
+    catalogue = filter_catalogue(catfile, min_magnitude)
+
+    allsb.calcwcs.compute_wcs(image_info, catalogue)
+
+    rad0 = 1100
+    import math
+    res = (1282.4836, 1911.9343, math.sqrt(2) / rad0)
+
+
+    _logger.debug('centroid, result=%s', res)
+    # image_info['res'] = res
     # print(image_info)
 
     # plt.matshow(result['saturation_mask'])

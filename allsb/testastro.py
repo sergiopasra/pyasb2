@@ -32,28 +32,32 @@ def wcs_calibrate_astrometry_net(filename, center_ij):
     session = requests.Session()
     session_key = astro_session_key(session)
 
-    response = astro_upload_file(session, session_key, filename, center_ij)
+    upload_args = {
+        'scale_upper': 90.0, 'publicly_visible': 'y',
+        'allow_modifications': 'd', 'scale_type': 'ul',
+        'allow_commercial_use': 'd', 'scale_lower': 25.0
+    }
+    upload_args['session'] = session_key
+
+    response = astro_upload_file(session, filename, center_ij, upload_args=upload_args)
 
     url_sub = URL_API + "/submissions/{subid}"
     url_jobs = URL_API + "/jobs/{}"
-    url_results = URL_API + "/jobs/{}/calibration/"
-    url_newfits = URL_BASE + "/new_fits_file/{}"
-    url_axyfile = URL_BASE + "/axy_file/{}"
-    url_corrfile = URL_BASE + "/corr_file/{}"
 
     url = url_sub.format(**response.json())
 
+    # Loop to check the status of the processing
     while True:
         try:
-            response = requests.get(url)
+            response = session.get(url)
             mm = response.json()
             _logger.debug("response.json() %s", mm)
-            time.sleep(5)
+            time.sleep(10)
             _logger.debug('jobs: %s', mm['jobs'])
             if mm['jobs']:
                 for jid in mm['jobs']:
                     if jid is not None:
-                        response_job = requests.get(url_jobs.format(jid))
+                        response_job = session.get(url_jobs.format(jid))
                         _logger.debug('job %s %s', jid, response_job.text)
             _logger.debug('job_calibrations: %s', mm['job_calibrations'])
             if mm['job_calibrations']:
@@ -61,17 +65,28 @@ def wcs_calibrate_astrometry_net(filename, center_ij):
         except http.client.RemoteDisconnected as error:
             _logger.error("%s", error)
 
-    response = requests.get(url_results.format(jid))
+    astro_download_files(session, jid, filename)
+
+
+def astro_download_files(session, jobid, filename):
+
+
+    url_results = URL_API + "/jobs/{}/calibration/"
+    url_newfits = URL_BASE + "/new_fits_file/{}"
+
+    url_corrfile = URL_BASE + "/corr_file/{}"
+
+    response = session.get(url_results.format(jobid))
     nfile = U.insert_adj_filename(filename, 'results', ext='.json')
     _logger.debug('save astrometry.net results in %s', nfile)
     with open(nfile, 'wb') as fd:
         fd.write(response.content)
 
-    urls = [url_newfits.format(jid), url_corrfile.format(jid)]
+    urls = [url_newfits.format(jobid), url_corrfile.format(jobid)]
     ajs_s = ['newfits', 'corrfile']
 
     for url, adj in zip(urls, ajs_s):
-        response = requests.get(url)
+        response = session.get(url)
         nfile = U.insert_adj_filename(filename, adj)
         _logger.debug('save in %s', nfile)
         with open(nfile, 'wb') as fd:
@@ -106,13 +121,10 @@ def calc_filename_center(filename):
     return U.insert_adj_filename(filename, 'center')
 
 
-def astro_upload_file(session, session_key, filename, center_ij, hsize=500):
-    upload_args = {
-        'scale_upper': 90.0, 'publicly_visible': 'y',
-        'allow_modifications': 'd', 'scale_type': 'ul',
-        'allow_commercial_use': 'd', 'scale_lower': 25.0
-    }
-    upload_args['session'] = session_key
+def astro_upload_file(session, filename, center_ij, hsize=500, upload_args=None):
+
+    if upload_args is None:
+        upload_args = {}
 
     _logger.debug('computing cut image around (i,j)=%s', center_ij)
     cut_hdu = cut_center(filename, center_ij, hsize)
