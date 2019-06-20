@@ -51,7 +51,7 @@ def filter_catalogue(catfile, min_magnitude=6.0):
     _logger.debug('read catalog')
     table = Table.read(catfile, format='ascii.csv')
     _logger.debug('filter stars by mag min_mag=%s', min_magnitude)
-
+    # Using vmag
     current_mag = table['vmag']
     magnitude_mask = current_mag < min_magnitude
     cpl = table[magnitude_mask]

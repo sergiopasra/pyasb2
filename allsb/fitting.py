@@ -16,7 +16,7 @@ def calc_projection_zen_eqa(params, x, y, alt, az):
 
 
 def iter_cb(params, iter, resid, *args, **kws):
-    print(iter, resid)
+    pass # print(iter, resid)
 
 
 def residual_zen_eqa(params, x, y, alt, az):

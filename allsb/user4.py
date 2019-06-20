@@ -472,6 +472,7 @@ def main(args=None):
 
     plot_p2 = True
     if plot_p2:
+        print('plot p2')
         table2 = filter_catalogue(catfile, min_magnitude=2.5)
         min_altitude = 20
         table2 = prepare_phot_catalogue(table2, aaframe, min_altitude)
@@ -517,6 +518,7 @@ def main(args=None):
     xm3, ym3 = proj_zen_eqa_inv(table_n3['alt'], table_n3['az'], x0_2, y0_2, scale_2, a0_2, E_2, eps_2)
 
     if plot_p3:
+        print('plot p3')
         _logger.debug('we have %s photo stars', len(table3))
         fig = plt.figure()
         # ax = fig.add_subplot(1, 1, 1, projection=wcs)
